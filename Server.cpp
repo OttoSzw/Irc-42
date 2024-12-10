@@ -75,13 +75,15 @@ void Server::SocketCreationOfServer()
 
     std::cout << "\033[1;35m    Listening for connections on port " << port << "... \033[0m" << std::endl;
 
+    std::cout << std::endl;
+
     int clientSocket = accept(socketServer, NULL, NULL);
     if (clientSocket < 0)
     {
         throw std::runtime_error("Accept failed");
     }
 
-    std::cout << "Client connected!" << std::endl;
+    std::cout << "\033[1;33mClient connected \033[0m!" << std::endl;
 
     const char *requestMessage = "Please enter the password: ";
     send(clientSocket, requestMessage, strlen(requestMessage), 0);
@@ -109,8 +111,9 @@ void Server::SocketCreationOfServer()
 
     const char *welcomeMessage = "Password correct! You are now connected.\n";
     send(clientSocket, welcomeMessage, strlen(welcomeMessage), 0);
-
-    std::cout << "Client authenticated successfully. Ready to receive messages." << std::endl;
+   
+    std::cout << std::endl;
+    std::cout << "\033[1;30m  Client authenticated successfully ✅. Ready to receive messages.\033[0m" << std::endl;
 
     while (true)
     {
@@ -122,7 +125,8 @@ void Server::SocketCreationOfServer()
         }
 
         buffer[bytesReceived] = '\0';
-        std::cout << "Message from client: " << buffer << std::endl;
+        std::cout << std::endl;
+        std::cout << "Message from client: " << buffer;
 
         // Optionally, send an acknowledgment back to the client
         const char *ackMessage = "Message received\n";
