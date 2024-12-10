@@ -1,66 +1,24 @@
-#include <iostream>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <stdexcept>
-#include <cstring>
+#include "Server.hpp"
 
-void SocketCreationAndServer()
+
+int main(int ac, char **av)
 {
-    // Créer le socket
-    int socketServer = socket(AF_INET, SOCK_STREAM, 0);
-    if (socketServer < 0)
+    Server Instance;
+
+
+    if (ac != 3)
     {
-        throw std::runtime_error("Socket creation failed");
+        std::cout << std::endl;
+        std::cout << "\033[1;31m    Your output should be this way : ./Irc <port> <password>\033[0m " << std::endl;
+        std::cout << std::endl;
+        return (2);
     }
 
-    std::cout << "Socket created !" << std::endl;
-
-    // Créer l'adresse serveur (écoute sur le port 6667)
-    struct sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_addr.s_addr = INADDR_ANY; // Accepter toutes les interfaces réseau
-    serverAddress.sin_port = htons(6667);       // Port 6667
-
-    // Lier le socket à l'adresse
-    if (bind(socketServer, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0)
-    {
-        throw std::runtime_error("Bind failed");
-    }
-
-    std::cout << "Bind completed!" << std::endl;
-
-    // Écouter les connexions entrantes
-    if (listen(socketServer, 5) < 0)
-    {
-        throw std::runtime_error("Listen failed");
-    }
-
-    std::cout << "Listening for connections on port 6667..." << std::endl;
-
-    // Accepter une connexion entrante
-    int clientSocket = accept(socketServer, nullptr, nullptr);
-    if (clientSocket < 0)
-    {
-        throw std::runtime_error("Accept failed");
-    }
-
-    std::cout << "Client connected!" << std::endl;
-
-    // Envoyer une réponse au client
-    const char *message = "Welcome to the server!\n";
-    send(clientSocket, message, strlen(message), 0);
-
-    // Fermer la connexion
-    close(clientSocket);
-    close(socketServer);
-}
-
-int main()
-{
     try
     {
-        SocketCreationAndServer();
+        Instance.assignPort(atoi(av[1]));
+        Instance.assignPassword(av[2]);
+        Instance.SocketCreationAndServer();
     }
     catch(const std::exception& e)
     {
