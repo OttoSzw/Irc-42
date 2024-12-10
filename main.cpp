@@ -18,7 +18,7 @@ int main(int ac, char **av)
     {
         Instance.assignPort(atoi(av[1]));
         Instance.assignPassword(av[2]);
-        Instance.SocketCreationAndServer();
+        Instance.SocketCreationOfServer();
     }
     catch(const std::exception& e)
     {

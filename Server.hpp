@@ -26,7 +26,7 @@ class Server
 		std::string getPassword();
 		void	assignPassword(char *P);
 
-		void	SocketCreationAndServer();
+		void	SocketCreationOfServer();
 	
 };
 
