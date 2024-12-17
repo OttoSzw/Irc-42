@@ -10,6 +10,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <sys/epoll.h>
+
+#define MAX_EVENTS 10
+#define BUFFER_SIZE 1024
 
 class Server
 {

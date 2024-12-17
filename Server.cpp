@@ -20,23 +20,25 @@ void Server::assignPassword(char *P)
 	password = P;
 }
 
-void trimPassword(char* password)
+void SuperSaiyan2(int socketFd)
 {
-    size_t len = strlen(password);
-    if (len > 0 && password[len - 1] == '\n')
-	{
-        password[len - 1] = '\0';
+    int flags = fcntl(socketFd, F_GETFL, 0);
+    if (flags == -1)
+    {
+        perror("fcntl (F_GETFL)");
+        exit(EXIT_FAILURE);
     }
-    while (len > 0 && (password[len - 1] == ' ' || password[len - 1] == '\t'))
-	{
-        password[--len] = '\0';
+
+    if (fcntl(socketFd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+        perror("fcntl (F_SETFL)");
+        exit(EXIT_FAILURE);
     }
 }
 
 void Server::SocketCreationOfServer()
 {
     int socketServer = socket(AF_INET, SOCK_STREAM, 0);
-
     if (socketServer < 0)
         throw std::runtime_error("Socket creation failed");
 
@@ -53,87 +55,93 @@ void Server::SocketCreationOfServer()
     serverAddress.sin_port = htons(port);
 
     sleep(1);
-    std::cout << "\033[1;30m    Trying to bind to port : \033[0m" << port << std::endl;
+    std::cout << "\033[1;25m    Trying to bind to port : \033[0m" << port << std::endl;
 
     std::cout << std::endl;
 
     if (bind(socketServer, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0)
-    {
         throw std::runtime_error("Bind failed");
-    }
-
     sleep(1);
     std::cout << "\033[1;32mBind completed \033[0m!" << std::endl;
     sleep(1);
-    
     std::cout << std::endl;
 
-    if (listen(socketServer, 5) < 0)
+    if (listen(socketServer, SOMAXCONN) < 0)
     {
         throw std::runtime_error("Listen failed");
     }
 
-    std::cout << "\033[1;35m    Listening for connections on port " << port << "... \033[0m" << std::endl;
+    SuperSaiyan2(socketServer);
 
+    int epollFd = epoll_create1(0);
+    if (epollFd == -1)
+    {
+        throw std::runtime_error("Epoll failed");
+    }
+
+    epoll_event event = {};
+    event.events = EPOLLIN;
+    event.data.fd = socketServer;
+
+    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, socketServer, &event) == -1)
+    {
+        throw std::runtime_error("Erreur epoll_ctl (serveur)");
+    }
+
+    std::cout << "\033[1;25m    Listening for connections on port " << port << "... \033[0m" << std::endl;
     std::cout << std::endl;
 
-    int clientSocket = accept(socketServer, NULL, NULL);
-    if (clientSocket < 0)
+    epoll_event events[MAX_EVENTS];
+    char buffer[BUFFER_SIZE];
+
+    while (1)
     {
-        throw std::runtime_error("Accept failed");
-    }
-
-    std::cout << "\033[1;33mClient connected \033[0m!" << std::endl;
-
-    const char *requestMessage = "Please enter the password: ";
-    send(clientSocket, requestMessage, strlen(requestMessage), 0);
-
-    char buffer[1024];  
-    ssize_t bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-    if (bytesReceived < 0)
-    {
-        throw std::runtime_error("Error receiving data from client.");
-    }
-
-    buffer[bytesReceived] = '\0';
-
-    trimPassword(buffer);
-
-    if (std::string(buffer) != password)
-    {
-        const char *incorrectPasswordMessage = "Incorrect password! Closing connection.\n";
-        send(clientSocket, incorrectPasswordMessage, strlen(incorrectPasswordMessage), 0);
-        std::cout << "Client provided incorrect password. Closing connection." << std::endl;
-        close(clientSocket);
-        close(socketServer);
-        return ;
-    }
-
-    const char *welcomeMessage = "Password correct! You are now connected.\n";
-    send(clientSocket, welcomeMessage, strlen(welcomeMessage), 0);
-   
-    std::cout << std::endl;
-    std::cout << "\033[1;30m  Client authenticated successfully ✅. Ready to receive messages.\033[0m" << std::endl;
-
-    while (true)
-    {
-        bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-        if (bytesReceived <= 0)
+        int n = epoll_wait(epollFd, events, MAX_EVENTS, -1);
+        if (n == -1)
         {
-            std::cout << "Client disconnected or an error occurred." << std::endl;
-            break;
+            throw std::runtime_error("EpollWait Problem");
         }
 
-        buffer[bytesReceived] = '\0';
-        std::cout << std::endl;
-        std::cout << "Message from client: " << buffer;
+        for (int i = 0; i < n; i++)
+        {
+            if (events[i].data.fd == socketServer)
+            {
+                int clientSocket = accept(socketServer, NULL, NULL);
+                if (clientSocket < 0)
+                {
+                    throw std::runtime_error("Accept failed");
+                }
 
-        // Optionally, send an acknowledgment back to the client
-        const char *ackMessage = "Message received\n";
-        send(clientSocket, ackMessage, strlen(ackMessage), 0);
-    }
+                std::cout << "\033[1;33m   ✅ Client connected \033[0m" << clientSocket << std::endl;
+                std::cout << std::endl;
+                SuperSaiyan2(clientSocket);
 
-    
-    close(clientSocket);
-    close(socketServer);
+                epoll_event clientEvent = {};
+                clientEvent.events = EPOLLIN;
+                clientEvent.data.fd = clientSocket;
+
+                if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientSocket, &clientEvent) == -1)
+                {
+                    perror("Erreur epoll_ctl (client)");
+                    close(clientSocket);
+                }
+            }
+            else
+            {
+                size_t bytesReceived = recv(events[i].data.fd, buffer, sizeof(buffer) - 1, 0);
+                if (bytesReceived <= 0)
+                {
+                    std::cout << "Client disconnected or an error occurred." << std::endl;
+                    close(events[i].data.fd);
+                    break;
+                }
+
+                buffer[bytesReceived] = '\0';
+                std::cout << "\033[1;35m    Message from client \033[0m" << events[i].data.fd << ": " << buffer;
+
+                const char *ackMessage = "\033[1;32mMessage received\033[0m\n";
+                send(events[i].data.fd, ackMessage, strlen(ackMessage), 0);
+            }
+        }
+    }    
 }
