@@ -38,6 +38,7 @@ void SuperSaiyan2(int socketFd)
 
 void Server::SocketCreationOfServer()
 {
+    Client data;
     int socketServer = socket(AF_INET, SOCK_STREAM, 0);
     if (socketServer < 0)
         throw std::runtime_error("Socket creation failed");
@@ -112,7 +113,10 @@ void Server::SocketCreationOfServer()
                     throw std::runtime_error("Accept failed");
                 }
 
-                std::cout << "\033[1;33m   ✅ Client connected \033[0m" << clientSocket << std::endl;
+                data.clientNicknames[clientSocket] = "Anonymous";
+                std::cout << "\033[1;33m   ✅ Client connected \033[0m" << data.clientNicknames[clientSocket] << std::endl;
+                
+
                 std::cout << std::endl;
                 SuperSaiyan2(clientSocket);
 
@@ -137,7 +141,7 @@ void Server::SocketCreationOfServer()
                 }
 
                 buffer[bytesReceived] = '\0';
-                std::cout << "\033[1;35m    Message from client \033[0m" << events[i].data.fd << ": " << buffer;
+                std::cout << "\033[1;35m    Message from client \033[0m" << data.clientNicknames[events[i].data.fd] << ": " << buffer;
 
                 const char *ackMessage = "\033[1;32mMessage received\033[0m\n";
                 send(events[i].data.fd, ackMessage, strlen(ackMessage), 0);

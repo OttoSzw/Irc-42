@@ -12,26 +12,30 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
+#include "Client.hpp"
+#include <map>
+#include <string>
 
 #define MAX_EVENTS 10
 #define BUFFER_SIZE 1024
+
 
 class Server
 {
 
 	private:
 
-		int port;
-		std::string password;
+		int							 	port;
+		std::string						password;
 
 	public:
 
-		int getPort();
-		void	assignPort(int P);
-		std::string getPassword();
-		void	assignPassword(char *P);
+		int 			getPort();
+		void			assignPort(int P);
+		std::string		getPassword();
+		void			assignPassword(char *P);
 
-		void	SocketCreationOfServer();
+		void			SocketCreationOfServer();
 	
 };
 
