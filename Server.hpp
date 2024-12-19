@@ -15,6 +15,7 @@
 #include "Client.hpp"
 #include <map>
 #include <string>
+#include <string>
 
 #define MAX_EVENTS 10
 #define BUFFER_SIZE 1024

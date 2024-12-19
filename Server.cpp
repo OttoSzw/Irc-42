@@ -36,6 +36,19 @@ void SuperSaiyan2(int socketFd)
     }
 }
 
+void    trimPassword(char* passreceive)
+{
+    size_t len = strlen(passreceive);
+    if (len > 0 && passreceive[len - 1] == '\n')
+    {
+        passreceive[len - 1] = '\0';
+    }
+    while (len > 0 && (passreceive[len - 1] == ' ' || passreceive[len - 1] == '\t'))
+    {
+        passreceive[--len] = '\0';
+    }
+}
+
 void Server::SocketCreationOfServer()
 {
     Client data;
@@ -113,21 +126,49 @@ void Server::SocketCreationOfServer()
                     throw std::runtime_error("Accept failed");
                 }
 
-                data.clientNicknames[clientSocket] = "Anonymous";
-                std::cout << "\033[1;33m   ✅ Client connected \033[0m" << data.clientNicknames[clientSocket] << std::endl;
-                
+                const char *requestPasswordMessage = "Entrez votre mot de passe : ";
+                send(clientSocket, requestPasswordMessage, strlen(requestPasswordMessage), 0);
 
-                std::cout << std::endl;
-                SuperSaiyan2(clientSocket);
-
-                epoll_event clientEvent = {};
-                clientEvent.events = EPOLLIN;
-                clientEvent.data.fd = clientSocket;
-
-                if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientSocket, &clientEvent) == -1)
+                char passwordBuffer[256];
+                size_t bytesReceived = recv(clientSocket, passwordBuffer, sizeof(passwordBuffer) - 1, 0);
+                if (bytesReceived <= 0)
                 {
-                    perror("Erreur epoll_ctl (client)");
+                    std::cout << "Erreur lors de la réception du mot de passe." << std::endl;
                     close(clientSocket);
+                    continue;
+                }
+                
+                passwordBuffer[bytesReceived] = '\0';
+                trimPassword(passwordBuffer);
+
+                std::cout << "Mot de passe reçu: '" << passwordBuffer << "'" << std::endl;  // Debugging
+                std::cout << "Mot de passe : '" << password << "'" << std::endl;  // Debugging
+
+                if (std::string(passwordBuffer) == password)
+                {
+                    const char *WelcomeClientMessage = "\033[1;33mBienvenue sur le Server ! Amuse toi bien :3\n\033[0m";
+                    send(clientSocket, WelcomeClientMessage, strlen(WelcomeClientMessage), 0);
+
+                    data.clientNicknames[clientSocket] = "Anonymous";
+                    std::cout << "\033[1;33m   ✅ Client connected \033[0m" << data.clientNicknames[clientSocket] << std::endl;                  
+                    std::cout << std::endl;
+                    SuperSaiyan2(clientSocket);
+
+                    epoll_event clientEvent = {};
+                    clientEvent.events = EPOLLIN;
+                    clientEvent.data.fd = clientSocket;
+
+                    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, clientSocket, &clientEvent) == -1)
+                    {
+                        perror("Erreur epoll_ctl (client)");
+                        close(clientSocket);
+                    }
+                }
+                else
+                {
+                    const char *incorrectPasswordMessage = "\033[1;31mMot de passe incorrect. Connexion fermée.\033[0m\n";
+                    send(clientSocket, incorrectPasswordMessage, strlen(incorrectPasswordMessage), 0);
+                    close(clientSocket);  // Fermer la connexion si le mot de passe est incorrect
                 }
             }
             else
