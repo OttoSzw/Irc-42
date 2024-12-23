@@ -1,6 +1,5 @@
 #include "Server.hpp"
 
-
 int main(int ac, char **av)
 {
     Server Instance;

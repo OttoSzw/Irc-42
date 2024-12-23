@@ -7,23 +7,29 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <cstring>
-#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <fcntl.h>
 #include <sys/epoll.h>
-#include "Client.hpp"
 #include <map>
-#include <string>
-#include <string>
+#include "Utils.hpp"
+#include "Commands.hpp"
 
 #define MAX_EVENTS 10
 #define BUFFER_SIZE 1024
 
+typedef struct s_ClientData
+{
+	std::string nickname;
+	std::string username;
+	bool HasNickName;
+	bool HasUserName;
+
+	s_ClientData() : HasNickName(false), HasUserName(false) {}
+} t_ClientData;
+
 
 class Server
 {
-
 	private:
 
 		int							 	port;
