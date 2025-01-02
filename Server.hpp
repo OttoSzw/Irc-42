@@ -2,48 +2,34 @@
 #define SERVER_HPP
 
 #include <iostream>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <stdexcept>
-#include <cstring>
 #include <stdlib.h>
-#include <stdio.h>
+#include <unistd.h>
+#include <cstdio>
+
+#include <sys/socket.h>
 #include <sys/epoll.h>
+
 #include <map>
-#include "Utils.hpp"
-#include "Commands.hpp"
-
-#define MAX_EVENTS 10
-#define BUFFER_SIZE 1024
-
-typedef struct s_ClientData
-{
-	std::string nickname;
-	std::string username;
-	bool HasNickName;
-	bool HasUserName;
-
-	s_ClientData() : HasNickName(false), HasUserName(false) {}
-} t_ClientData;
-
+#include <netinet/in.h>
+#include "Client.hpp"
 
 class Server
 {
-	private:
 
-		int							 	port;
-		std::string						password;
+    private:
 
-	public:
+        int port;
+        std::string password;
+        int                     socketServer;
+        std::map<int, Client *> ClientsList;
 
-		int 			getPort();
-		void			assignPort(int P);
-		std::string		getPassword();
-		void			assignPassword(char *P);
+    public:
 
-		void			SocketCreationOfServer();
-	
+        Server(int PortGiven, std::string PasswordGiven);
+
+        void    RunningServer();
+        void    newConnection(int epollFd);
+        void    handleConnection(int epollFd, epoll_event *events, int i);
 };
 
 #endif

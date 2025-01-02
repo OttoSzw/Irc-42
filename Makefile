@@ -1,7 +1,7 @@
 EXEC = Irc
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98
-SRCS = main.cpp Server.cpp Utils.cpp Commands.cpp
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -g3
+SRCS = main.cpp Server.cpp
 OBJDIR = objs
 OBJS = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
 
