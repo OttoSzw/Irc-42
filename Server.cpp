@@ -1,6 +1,6 @@
 #include "Server.hpp"
 
-Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), password(PasswordGiven)
+Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), password(PasswordGiven), valid(0)
 {
     socketServer = socket(AF_INET, SOCK_STREAM, 0);
     if (socketServer < 0)
@@ -24,7 +24,7 @@ Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), pass
 
 void    Server::RunningServer()
 {
-    int epollFd = epoll_create1(0);
+    epollFd = epoll_create1(0);
     if (epollFd < 0)
         throw std::runtime_error("Error epoll failed Instance");
     
@@ -46,9 +46,9 @@ void    Server::RunningServer()
         for (int i = 0; i < newEvents; ++i)
         {
             if (events[i].data.fd == socketServer)
-                newConnection(epollFd);
+                newConnection();
             else
-                handleConnection(epollFd, events, i);
+                handleConnection(events[i].data.fd);
         }
     }
 
@@ -56,7 +56,7 @@ void    Server::RunningServer()
     close(socketServer);
 }
 
-void    Server::newConnection(int epollFd)
+void    Server::newConnection()
 {
     int client_fd = accept(socketServer, 0, 0);
     if (client_fd < 0)
@@ -64,7 +64,7 @@ void    Server::newConnection(int epollFd)
 
     // Add new client to epoll
     struct epoll_event client_ev;
-    client_ev.events = EPOLLIN | EPOLLET; // Read events + edge-triggered
+    client_ev.events = EPOLLIN | EPOLLET;
     client_ev.data.fd = client_fd;
 
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, client_fd, &client_ev) < 0)
@@ -73,31 +73,43 @@ void    Server::newConnection(int epollFd)
         throw std::runtime_error("Epollctl error");
     }
 
-    ClientsList[client_fd] = new Client;
+    ClientsList[client_fd] = new Client(client_fd);
     std::cout << "New client connected: FD " << client_fd << std::endl;
 }
 
-void    Server::handleConnection(int epollFd, epoll_event *events, int i)
+void Server::handleConnection(int client_fd)
 {
-    char buffer[1024] = {0};
-    int client_fd = events[i].data.fd;
-    ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer) - 1);
+    std::string message = ClientsList[client_fd]->recvMessage();
+    std::vector<std::vector<std::string> > av = CommandSplitParam(message);
 
-    if (bytes_read <= 0)
+    if (av.size() == 0 || av[0].empty())
     {
-        if (bytes_read == 0)
-            std::cout << "Client disconnected: FD " << client_fd << std::endl;
-        else
-            perror("read");
-
+        std::cout << "Client disconnected: FD " << client_fd << std::endl;
         close(client_fd);
         delete ClientsList[client_fd];
         ClientsList.erase(client_fd);
         epoll_ctl(epollFd, EPOLL_CTL_DEL, client_fd, 0);
     }
-    else
+
+    for (size_t i = 0; i < av.size(); i++)
     {
-        std::cout << "Message from FD " << client_fd << ": " << buffer << std::endl;
-        write(client_fd, buffer, bytes_read);
+
+        if (av[i][0] == "PASS" || av[i][0] == "NICK" || av[i][0] == "USER" || av[i][0] == "CAP")
+        {
+            if (av[i][0] == "PASS")
+                valid = ClientsList[client_fd]->Authentication(password, av[i].size(), av[i][1]);
+            if (av[i][0] == "NICK" && valid != 0)
+                ClientsList[client_fd]->SetNickname(av[i][1]);
+            if (av[i][0] == "USER" && valid != 0)
+                ClientsList[client_fd]->SetUsername(av[i][4], av[i][5]);
+        }
+        if (ClientsList[client_fd]->GetNickname() != "Anonymous" && ClientsList[client_fd]->GetUsername() != "Unknow")
+        {
+            std::string welcomeMessage = "001 " + ClientsList[client_fd]->GetNickname() + " :Welcome to the IRC Network " +
+                                        ClientsList[client_fd]->GetNickname() + "!" +
+                                        ClientsList[client_fd]->GetUsername() + "@localhost\n";
+            send(client_fd, welcomeMessage.c_str(), welcomeMessage.size(), 0);
+        }
     }
+    
 }

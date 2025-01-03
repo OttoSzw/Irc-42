@@ -5,31 +5,38 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <cstdio>
+#include <cstring>
 
 #include <sys/socket.h>
 #include <sys/epoll.h>
-
 #include <map>
+#include <vector>
 #include <netinet/in.h>
+
 #include "Client.hpp"
+#include "Utils.hpp"
 
 class Server
 {
 
     private:
 
-        int port;
-        std::string password;
-        int                     socketServer;
-        std::map<int, Client *> ClientsList;
+        int                         port;
+        std::string                 password;
+
+        bool                        valid;
+        int                         socketServer;
+        int                         epollFd;
+
+        std::map<int, Client *>     ClientsList;
 
     public:
 
         Server(int PortGiven, std::string PasswordGiven);
 
         void    RunningServer();
-        void    newConnection(int epollFd);
-        void    handleConnection(int epollFd, epoll_event *events, int i);
+        void    newConnection();
+        void    handleConnection(int client_fd);
 };
 
 #endif
