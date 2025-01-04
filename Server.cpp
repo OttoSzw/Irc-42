@@ -1,6 +1,6 @@
 #include "Server.hpp"
 
-Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), password(PasswordGiven), valid(0)
+Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), password(PasswordGiven), flagWelcome(0), valid(0)
 {
     socketServer = socket(AF_INET, SOCK_STREAM, 0);
     if (socketServer < 0)
@@ -80,6 +80,7 @@ void    Server::newConnection()
 void Server::handleConnection(int client_fd)
 {
     std::string message = ClientsList[client_fd]->recvMessage();
+    std::cout << "[    MESSAGE    ]  ===>>  '" << message << "'" << std::endl;
     std::vector<std::vector<std::string> > av = CommandSplitParam(message);
 
     if (av.size() == 0 || av[0].empty())
@@ -93,22 +94,87 @@ void Server::handleConnection(int client_fd)
 
     for (size_t i = 0; i < av.size(); i++)
     {
-
         if (av[i][0] == "PASS" || av[i][0] == "NICK" || av[i][0] == "USER" || av[i][0] == "CAP")
         {
             if (av[i][0] == "PASS")
-                valid = ClientsList[client_fd]->Authentication(password, av[i].size(), av[i][1]);
+            {
+                if (av[i].size() > 1 && !av[i][1].empty())
+                    valid = ClientsList[client_fd]->Authentication(password, av[i].size(), av[i][1]);
+                else
+                {
+                    std::string errorMsg = "Not enough parameters for CMD : PASS !\n";
+                    send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                }
+            }
             if (av[i][0] == "NICK" && valid != 0)
-                ClientsList[client_fd]->SetNickname(av[i][1]);
+            {
+                if (av[i].size() > 1 && !av[i][1].empty())
+                    ClientsList[client_fd]->SetNickname(av[i][1]);
+                else
+                {
+                    std::string errorMsg = "Not enough parameters for CMD : NICK !\n";
+                    send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                }
+            }
             if (av[i][0] == "USER" && valid != 0)
-                ClientsList[client_fd]->SetUsername(av[i][4], av[i][5]);
+            {
+                if (av[i].size() > 4)
+                    ClientsList[client_fd]->SetUsername(av[i][4], av[i][5]);
+                else
+                {
+                    std::string errorMsg = "Not enough parameters for CMD : USER !\n";
+                    send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                }
+            }
         }
         if (ClientsList[client_fd]->GetNickname() != "Anonymous" && ClientsList[client_fd]->GetUsername() != "Unknow")
         {
-            std::string welcomeMessage = "001 " + ClientsList[client_fd]->GetNickname() + " :Welcome to the IRC Network " +
-                                        ClientsList[client_fd]->GetNickname() + "!" +
-                                        ClientsList[client_fd]->GetUsername() + "@localhost\n";
-            send(client_fd, welcomeMessage.c_str(), welcomeMessage.size(), 0);
+            if (flagWelcome == 0)
+            {
+                flagWelcome = 1;
+                std::cout << "\033[1;32mClient FD " << client_fd << " authenticated successfully.\033[0m" << std::endl;
+                std::string welcomeMessage = "001 " + ClientsList[client_fd]->GetNickname() + " :Welcome to the IRC Network " +
+                                            ClientsList[client_fd]->GetNickname() + "!" +
+                                            ClientsList[client_fd]->GetUsername() + "@localhost\n";
+                sendMessage(client_fd, welcomeMessage);
+            }
+            else
+            {
+                if (av[i][0] == "PING")
+                {
+                    if (av[i].size() > 1 && !av[i][1].empty())
+                        ClientsList[client_fd]->Ping();
+                    else
+                    {
+                        std::string errorMsg = "Not enough parameters for CMD : PASS !\n";
+                        send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                    }
+                }
+                if (av[i][0] == "PRIVMSG")
+                {
+
+                }
+                if (av[i][0] == "JOIN")
+                {
+
+                }
+                if (av[i][0] == "MODE")
+                {
+
+                }
+                if (av[i][0] == "KICK")
+                {
+
+                }
+                if (av[i][0] == "INVITE")
+                {
+
+                }
+                if (av[i][0] == "TOPIC")
+                {
+
+                }
+            }
         }
     }
     

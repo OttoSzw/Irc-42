@@ -37,3 +37,8 @@ std::vector<std::vector<std::string> > CommandSplitParam(const std::string &str)
 
     return result;
 }
+
+void sendMessage(int client_fd, const std::string& message)
+{
+    send(client_fd, message.c_str(), message.size(), 0);
+}

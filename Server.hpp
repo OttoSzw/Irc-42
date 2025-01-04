@@ -24,6 +24,7 @@ class Server
         int                         port;
         std::string                 password;
 
+        bool                        flagWelcome;
         bool                        valid;
         int                         socketServer;
         int                         epollFd;

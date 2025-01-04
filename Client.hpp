@@ -34,7 +34,9 @@ class Client
         void            SetUsername(std::string firstname, std::string lastname);
 
         std::string     recvMessage();
-        int            Authentication(std::string password, int sizeTab, std::string element);
+        int             Authentication(std::string password, int sizeTab, std::string element);
+        void            Ping();
+
 };
 
 #endif
