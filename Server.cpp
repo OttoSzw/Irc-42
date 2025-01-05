@@ -1,6 +1,6 @@
 #include "Server.hpp"
 
-Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), password(PasswordGiven), flagWelcome(0), valid(0)
+Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), password(PasswordGiven), valid(0)
 {
     socketServer = socket(AF_INET, SOCK_STREAM, 0);
     if (socketServer < 0)
@@ -129,9 +129,9 @@ void Server::handleConnection(int client_fd)
         }
         if (ClientsList[client_fd]->GetNickname() != "Anonymous" && ClientsList[client_fd]->GetUsername() != "Unknow")
         {
-            if (flagWelcome == 0)
+            if (ClientsList[client_fd]->flagWelcome == 0)
             {
-                flagWelcome = 1;
+                ClientsList[client_fd]->flagWelcome = 1;
                 std::cout << "\033[1;32mClient FD " << client_fd << " authenticated successfully.\033[0m" << std::endl;
                 std::string welcomeMessage = "001 " + ClientsList[client_fd]->GetNickname() + " :Welcome to the IRC Network " +
                                             ClientsList[client_fd]->GetNickname() + "!" +
@@ -152,7 +152,16 @@ void Server::handleConnection(int client_fd)
                 }
                 if (av[i][0] == "PRIVMSG")
                 {
-
+                    if (av[i].size() > 1 && !av[i][1].empty() && !av[i][2].empty())
+                    {
+                        std::string privmesg = mesgParsing(av[i]);
+                        ClientsList[client_fd]->PrivMsg(ClientsList, av[i][1], privmesg);
+                    }
+                    else
+                    {
+                        std::string errorMsg = "Not enough parameters for CMD : PRIVMSG !\n";
+                        send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                    }
                 }
                 if (av[i][0] == "JOIN")
                 {
@@ -177,5 +186,4 @@ void Server::handleConnection(int client_fd)
             }
         }
     }
-    
 }

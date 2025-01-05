@@ -12,6 +12,7 @@
 
 #include <map>
 #include <netinet/in.h>
+#include "Utils.hpp"
 
 class Client
 {
@@ -26,6 +27,7 @@ class Client
 
     public:
 
+        bool                        flagWelcome;
         Client(int client_fd);
 
         std::string            GetNickname();
@@ -35,6 +37,7 @@ class Client
 
         std::string     recvMessage();
         int             Authentication(std::string password, int sizeTab, std::string element);
+        void            PrivMsg(const std::map<int, Client *> &ClientsList, std::string target, std::string message);
         void            Ping();
 
 };

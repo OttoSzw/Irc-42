@@ -42,3 +42,16 @@ void sendMessage(int client_fd, const std::string& message)
 {
     send(client_fd, message.c_str(), message.size(), 0);
 }
+
+std::string mesgParsing(const std::vector<std::string> &av)
+{
+    std::string message;
+
+    for (size_t i = 2; i < av.size(); i++)
+    {
+        if (!message.empty() && i != 2)
+            message += " ";
+        message += av[i];
+    }
+    return (message);
+}
