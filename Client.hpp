@@ -25,6 +25,8 @@ class Client
         bool            setNick;
         bool            setUser;
 
+        bool            isInvisible;
+
     public:
 
         bool                        flagWelcome;
@@ -38,7 +40,8 @@ class Client
         std::string     recvMessage();
         int             Authentication(std::string password, int sizeTab, std::string element);
         void            PrivMsg(const std::map<int, Client *> &ClientsList, std::string target, std::string message);
-        void            Ping();
+        void            Ping(std::string token);
+        void            SetMode(std::string mode);
 
 };
 

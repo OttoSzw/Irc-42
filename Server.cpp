@@ -62,7 +62,6 @@ void    Server::newConnection()
     if (client_fd < 0)
         throw std::runtime_error("Accept error");
 
-    // Add new client to epoll
     struct epoll_event client_ev;
     client_ev.events = EPOLLIN | EPOLLET;
     client_ev.data.fd = client_fd;
@@ -103,7 +102,7 @@ void Server::handleConnection(int client_fd)
                 else
                 {
                     std::string errorMsg = "Not enough parameters for CMD : PASS !\n";
-                    send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                    sendMessage(client_fd, errorMsg);
                 }
             }
             if (av[i][0] == "NICK" && valid != 0)
@@ -113,7 +112,7 @@ void Server::handleConnection(int client_fd)
                 else
                 {
                     std::string errorMsg = "Not enough parameters for CMD : NICK !\n";
-                    send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                    sendMessage(client_fd, errorMsg);
                 }
             }
             if (av[i][0] == "USER" && valid != 0)
@@ -123,7 +122,7 @@ void Server::handleConnection(int client_fd)
                 else
                 {
                     std::string errorMsg = "Not enough parameters for CMD : USER !\n";
-                    send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                    sendMessage(client_fd, errorMsg);
                 }
             }
         }
@@ -143,31 +142,35 @@ void Server::handleConnection(int client_fd)
                 if (av[i][0] == "PING")
                 {
                     if (av[i].size() > 1 && !av[i][1].empty())
-                        ClientsList[client_fd]->Ping();
+                        ClientsList[client_fd]->Ping(av[i][1]);
                     else
                     {
-                        std::string errorMsg = "Not enough parameters for CMD : PASS !\n";
-                        send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
-                    }
+                        std::string errorMsg = ":server_name 409 " + ClientsList[client_fd]->GetNickname() + " :No origin specified\n";
+                        sendMessage(client_fd, errorMsg);
                 }
+                    }
                 if (av[i][0] == "PRIVMSG")
                 {
                     if (av[i].size() > 1 && !av[i][1].empty() && !av[i][2].empty())
                     {
                         std::string privmesg = mesgParsing(av[i]);
-                        ClientsList[client_fd]->PrivMsg(ClientsList, av[i][1], privmesg);
+                        ClientsList[client_fd]->PrivMsg(ClientsList, av[i][1], privmesg.substr(1, privmesg.size()));
                     }
                     else
                     {
                         std::string errorMsg = "Not enough parameters for CMD : PRIVMSG !\n";
-                        send(client_fd, errorMsg.c_str(), errorMsg.size(), 0);
+                        sendMessage(client_fd, errorMsg);
+                    }
+                }
+                if (av[i][0] == "MODE")
+                {
+                    if (av[i].size() > 2 && !av[i][2].empty())
+                    {
+                        std::string mode = av[i][2];
+                        ClientsList[client_fd]->SetMode(mode);
                     }
                 }
                 if (av[i][0] == "JOIN")
-                {
-
-                }
-                if (av[i][0] == "MODE")
                 {
 
                 }

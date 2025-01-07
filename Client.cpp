@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client(int client_fd) : clientFd(client_fd), setNick(false), setUser(false), flagWelcome(0)
+Client::Client(int client_fd) : clientFd(client_fd), setNick(false), setUser(false), isInvisible(0), flagWelcome(0)
 {
     nickname = "Anonymous";
     username = "Unknow";
@@ -33,7 +33,6 @@ void    Client::SetUsername(std::string firstname, std::string lastname)
 
 
 
-
 std::string Client::recvMessage()
 {
     char buffer[1024] = {0};
@@ -58,10 +57,13 @@ int    Client::Authentication(std::string password, int sizeTab, std::string ele
     return (0);
 }
 
-void    Client::Ping()
+
+void    Client::Ping(std::string token)
 {
-    
+    std::string response = "PONG " + token;
+    sendMessage(clientFd, response);
 }
+
 
 void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, std::string target, std::string message)
 {
@@ -73,10 +75,27 @@ void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, std::string 
 
         if (client != NULL && client->GetNickname() == target)
         {
-            sendMessage(clientID, message);
+            sendPrivMessage(clientID, nickname, client->GetNickname(), message);
             std::cout << "Message sent to client " << target << " (ID: " << clientID << "): " << message << std::endl;
             return;
         }
     }
     std::cout << "Error: No client with nickname '" << target << "' found." << std::endl;
+    std::string errorMsg = "401 " + nickname + " " + target + " :No such nick/channel\n";
+    sendMessage(clientFd, errorMsg);
+}
+
+void    Client::SetMode(std::string mode)
+{
+    if (mode == "+i")
+    {
+        isInvisible = 1;
+        std::string message = "221 " + nickname + " :+i\n";
+        sendMessage(clientFd, message);
+    }
+    else
+    {
+        std::string errorMsg = "472 " + nickname + " :Unknown MODE flag\n";
+        sendMessage(clientFd, errorMsg);
+    }
 }
