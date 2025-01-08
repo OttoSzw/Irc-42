@@ -79,8 +79,9 @@ void    Server::newConnection()
 void Server::handleConnection(int client_fd)
 {
     std::string message = ClientsList[client_fd]->recvMessage();
-    std::cout << "[    MESSAGE    ]  ===>>  '" << message << "'" << std::endl;
     std::vector<std::vector<std::string> > av = CommandSplitParam(message);
+
+    std::cout << "[ " << message << " ]" << std::endl;
 
     if (av.size() == 0 || av[0].empty())
     {
