@@ -155,7 +155,8 @@ void Server::handleConnection(int client_fd)
                     if (av[i].size() > 1 && !av[i][1].empty() && !av[i][2].empty())
                     {
                         std::string privmesg = mesgParsing(av[i]);
-                        ClientsList[client_fd]->PrivMsg(ClientsList, av[i][1], privmesg.substr(1, privmesg.size()));
+                        std::cout << "|" << privmesg << "|" << std::endl;
+                        ClientsList[client_fd]->PrivMsg(ClientsList, av[i][1], privmesg.substr(0, privmesg.size()));
                     }
                     else
                     {

@@ -18,8 +18,12 @@ std::string    Client::GetUsername()
 
 void    Client::SetNickname(std::string newname)
 {
+    std::string oldNickName = nickname;
+    std::cout << "OLD NICK : " << oldNickName << std::endl;
     nickname = newname;
+    std::cout << "NEW NICK : " << nickname << std::endl;
     setNick = true;
+    sendMessage(clientFd, ":" + oldNickName + " NICK " + nickname + "\r\n");
     std::cout << "\033[1;34m[D] Nick set\033[0m" << std::endl;
 
 }
