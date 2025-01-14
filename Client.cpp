@@ -19,9 +19,7 @@ std::string    Client::GetUsername()
 void    Client::SetNickname(std::string newname)
 {
     std::string oldNickName = nickname;
-    std::cout << "OLD NICK : " << oldNickName << std::endl;
     nickname = newname;
-    std::cout << "NEW NICK : " << nickname << std::endl;
     setNick = true;
     sendMessage(clientFd, ":" + oldNickName + " NICK " + nickname + "\r\n");
     std::cout << "\033[1;34m[D] Nick set\033[0m" << std::endl;
@@ -71,6 +69,13 @@ void    Client::Ping(std::string token)
 
 void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, std::string target, std::string message)
 {
+    if (target.empty() || message.empty())
+    {
+        std::string errorMsg = "461 PRIVMSG :Not enough parameters\r\n";
+        sendMessage(clientFd, errorMsg);
+        return ;
+    }
+
     std::map<int, Client *>::const_iterator it;
     for (it = ClientsList.begin(); it != ClientsList.end(); ++it)
     {
@@ -79,8 +84,8 @@ void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, std::string 
 
         if (client != NULL && client->GetNickname() == target)
         {
-            sendPrivMessage(clientID, nickname, client->GetNickname(), message);
-            std::cout << "Message sent to client " << target << " (ID: " << clientID << "): " << message << std::endl;
+            std::string privMsg = nickname + " PRIVMSG " + target + " :" + message + "\r\n";
+            sendMessage(clientID, privMsg);
             return;
         }
     }
@@ -103,3 +108,31 @@ void    Client::SetMode(std::string mode)
         sendMessage(clientFd, errorMsg);
     }
 }
+
+void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &ChannelList)
+{
+    if (nameChannel.empty())
+    {
+        return;
+    }
+
+    Channel *channelToJoin = NULL;
+
+    for (std::vector<Channel *>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
+    {
+        if ((*it)->getNameChannel() == nameChannel)
+        {
+            channelToJoin = *it;
+            break;
+        }
+    }
+
+    if (channelToJoin == NULL)
+    {
+        channelToJoin = new Channel(nameChannel);
+        ChannelList.push_back(channelToJoin);
+    }
+
+    channelToJoin->addUser(this);
+}
+

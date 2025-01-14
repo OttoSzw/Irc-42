@@ -81,11 +81,13 @@ void Server::handleConnection(int client_fd)
     std::string message = ClientsList[client_fd]->recvMessage();
     std::vector<std::vector<std::string> > av = CommandSplitParam(message);
 
-    std::cout << "[ " << message << " ]" << std::endl;
+    std::cout << "\033[1;36m" << message << "\033[0m" << std::endl;
 
     if (av.size() == 0 || av[0].empty())
     {
         std::cout << "Client disconnected: FD " << client_fd << std::endl;
+        for (std::vector<Channel*>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
+            (*it)->removeUser(ClientsList[client_fd]);
         close(client_fd);
         delete ClientsList[client_fd];
         ClientsList.erase(client_fd);
@@ -155,8 +157,7 @@ void Server::handleConnection(int client_fd)
                     if (av[i].size() > 1 && !av[i][1].empty() && !av[i][2].empty())
                     {
                         std::string privmesg = mesgParsing(av[i]);
-                        std::cout << "|" << privmesg << "|" << std::endl;
-                        ClientsList[client_fd]->PrivMsg(ClientsList, av[i][1], privmesg.substr(0, privmesg.size()));
+                        ClientsList[client_fd]->PrivMsg(ClientsList, av[i][1], privmesg.substr(1, privmesg.size()));
                     }
                     else
                     {
@@ -174,7 +175,8 @@ void Server::handleConnection(int client_fd)
                 }
                 if (av[i][0] == "JOIN")
                 {
-
+                    if (av[i].size() > 1 && !av[i][1].empty())
+                        ClientsList[client_fd]->JoinChannel(av[i][1], ChannelList);
                 }
                 if (av[i][0] == "KICK")
                 {

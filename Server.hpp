@@ -14,6 +14,7 @@
 #include <netinet/in.h>
 
 #include "Client.hpp"
+#include "Channel.hpp"
 #include "Utils.hpp"
 
 class Server
@@ -29,6 +30,7 @@ class Server
         int                         epollFd;
 
         std::map<int, Client *>     ClientsList;
+        std::vector<Channel *>      ChannelList;
 
     public:
 

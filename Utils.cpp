@@ -36,14 +36,6 @@ void sendMessage(int client_fd, const std::string& message)
     send(client_fd, message.c_str(), message.size(), 0);
 }
 
-void sendPrivMessage(int client_fd, std::string from, std::string nameReceive, const std::string& message)
-{   
-    std::string privMsg = from + " PRIVMSG " + nameReceive + " :" + message + "\r\n";
-    std::cout << "MESSAGE = " << privMsg << "| and the id = " << client_fd << std::endl;
-    if (send(client_fd, privMsg.c_str(), privMsg.size(), 0) <= 0)
-        std::cout << "Ca marche pas" << std::endl;
-}
-
 std::string mesgParsing(const std::vector<std::string> &av)
 {
     std::string message;

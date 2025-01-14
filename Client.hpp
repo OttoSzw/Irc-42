@@ -12,7 +12,10 @@
 
 #include <map>
 #include <netinet/in.h>
+#include "Channel.hpp"
 #include "Utils.hpp"
+
+class Channel;
 
 class Client
 {
@@ -42,7 +45,7 @@ class Client
         void            PrivMsg(const std::map<int, Client *> &ClientsList, std::string target, std::string message);
         void            Ping(std::string token);
         void            SetMode(std::string mode);
-
+        void            JoinChannel(std::string nameChannel, std::vector<Channel *> &ChannelList);
 };
 
 #endif
