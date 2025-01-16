@@ -16,6 +16,12 @@ std::string    Client::GetUsername()
     return (username);
 }
 
+int            Client::GetClientFd()
+{
+    return (clientFd);
+}
+
+
 void    Client::SetNickname(std::string newname)
 {
     std::string oldNickName = nickname;
@@ -66,14 +72,32 @@ void    Client::Ping(std::string token)
     sendMessage(clientFd, response);
 }
 
-
-void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, std::string target, std::string message)
+void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, const std::vector<Channel *> &ChannelList, std::string target, std::string message)
 {
     if (target.empty() || message.empty())
     {
         std::string errorMsg = "461 PRIVMSG :Not enough parameters\r\n";
         sendMessage(clientFd, errorMsg);
         return ;
+    }
+
+    for (size_t i = 0; i < ChannelList.size(); ++i)
+    {
+        Channel *channel = ChannelList[i];
+        if (channel->getNameChannel() == target)
+        {
+            std::vector<Client *> members = channel->getClients();
+            for (size_t j = 0; j < members.size(); ++j)
+            {
+                Client *member = members[j];
+                if (member != this)
+                {
+                    std::string channelMsg = ":" + nickname + " PRIVMSG " + target + " :" + message + "\r\n";
+                    sendMessage(member->GetClientFd(), channelMsg);
+                }
+            }
+            return ;
+        }
     }
 
     std::map<int, Client *>::const_iterator it;
@@ -84,7 +108,7 @@ void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, std::string 
 
         if (client != NULL && client->GetNickname() == target)
         {
-            std::string privMsg = nickname + " PRIVMSG " + target + " :" + message + "\r\n";
+            std::string privMsg = ":" + nickname + " PRIVMSG " + target + " :" + message + "\r\n";
             sendMessage(clientID, privMsg);
             return;
         }
@@ -135,4 +159,3 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
 
     channelToJoin->addUser(this);
 }
-

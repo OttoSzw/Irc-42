@@ -26,6 +26,7 @@ class Channel
         void                        addUser(Client *client);
         void                        removeUser(Client *client);
 
+        const std::vector<Client *> &getClients() const;
 };
 
 #endif

@@ -37,12 +37,13 @@ class Client
 
         std::string            GetNickname();
         std::string            GetUsername();
+        int                    GetClientFd();
         void            SetNickname(std::string newname);
         void            SetUsername(std::string firstname, std::string lastname);
 
         std::string     recvMessage();
         int             Authentication(std::string password, int sizeTab, std::string element);
-        void            PrivMsg(const std::map<int, Client *> &ClientsList, std::string target, std::string message);
+        void            PrivMsg(const std::map<int, Client *> &ClientsList, const std::vector<Channel *> &ChannelList, std::string target, std::string message);
         void            Ping(std::string token);
         void            SetMode(std::string mode);
         void            JoinChannel(std::string nameChannel, std::vector<Channel *> &ChannelList);

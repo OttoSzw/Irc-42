@@ -81,7 +81,7 @@ void Server::handleConnection(int client_fd)
     std::string message = ClientsList[client_fd]->recvMessage();
     std::vector<std::vector<std::string> > av = CommandSplitParam(message);
 
-    std::cout << "\033[1;36m" << message << "\033[0m" << std::endl;
+    std::cout << "\033[1;93m(" << ClientsList[client_fd]->GetNickname() << ")\033[0m" << "\033[1;36m : " << message << "\033[0m" << std::endl;
 
     if (av.size() == 0 || av[0].empty())
     {
@@ -150,14 +150,14 @@ void Server::handleConnection(int client_fd)
                     {
                         std::string errorMsg = ":server_name 409 " + ClientsList[client_fd]->GetNickname() + " :No origin specified\n";
                         sendMessage(client_fd, errorMsg);
-                }
                     }
+                }
                 if (av[i][0] == "PRIVMSG")
                 {
                     if (av[i].size() > 1 && !av[i][1].empty() && !av[i][2].empty())
                     {
                         std::string privmesg = mesgParsing(av[i]);
-                        ClientsList[client_fd]->PrivMsg(ClientsList, av[i][1], privmesg.substr(1, privmesg.size()));
+                        ClientsList[client_fd]->PrivMsg(ClientsList, ChannelList, av[i][1], privmesg.substr(1, privmesg.size()));
                     }
                     else
                     {
@@ -180,7 +180,7 @@ void Server::handleConnection(int client_fd)
                 }
                 if (av[i][0] == "KICK")
                 {
-
+                    
                 }
                 if (av[i][0] == "INVITE")
                 {
