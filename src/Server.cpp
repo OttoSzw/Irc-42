@@ -129,7 +129,7 @@ void Server::handleConnection(int client_fd)
                 }
             }
         }
-        if (ClientsList[client_fd]->GetNickname() != "Anonymous" && ClientsList[client_fd]->GetUsername() != "Unknow")
+        if (ClientsList[client_fd]->GetNickname() != "Anonymous" && ClientsList[client_fd]->GetUsername() != "Unknow" && valid != 0)
         {
             if (ClientsList[client_fd]->flagWelcome == 0)
             {
@@ -161,7 +161,7 @@ void Server::handleConnection(int client_fd)
                     }
                     else
                     {
-                        std::string errorMsg = "Not enough parameters for CMD : PRIVMSG !\n";
+                        std::string errorMsg = "461 PRIVMSG :Not enough parameters\r\n";
                         sendMessage(client_fd, errorMsg);
                     }
                 }
@@ -177,6 +177,8 @@ void Server::handleConnection(int client_fd)
                 {
                     if (av[i].size() > 1 && !av[i][1].empty())
                         ClientsList[client_fd]->JoinChannel(av[i][1], ChannelList);
+                    else
+                        sendMessage(client_fd, "461 JOIN :Not enough parameters\r\n");
                 }
                 if (av[i][0] == "KICK")
                 {
@@ -188,7 +190,43 @@ void Server::handleConnection(int client_fd)
                 }
                 if (av[i][0] == "TOPIC")
                 {
-
+                    if (av[i].size() > 1 && !av[i][1].empty())
+                    {
+                        Channel *foundChannel = NULL;
+                        for (std::vector<Channel *>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
+                        {
+                            Channel *channel = (*it);
+                            if (channel->getNameChannel() == av[i][1])
+                            {
+                                foundChannel = channel;
+                                break;
+                            }
+                        }
+                        if (foundChannel != NULL)
+                        {
+                            std::string topicDescription = "";
+                            if (av[i].size() > 2)
+                            {
+                                for (size_t j = 2; j < av[i].size(); ++j)
+                                {
+                                    if (j > 2)
+                                        topicDescription += " ";
+                                    topicDescription += av[i][j];
+                                }
+                            }
+                            ClientsList[client_fd]->SetTopic(*foundChannel, topicDescription);
+                        }
+                        else
+                        {
+                            std::string errorMsg = ":403 " + ClientsList[client_fd]->GetNickname() + av[i][1] + " :No such channel\r\n";
+                            sendMessage(client_fd, errorMsg);
+                        }
+                    }
+                    else
+                    {
+                        std::string errorMsg = ":461 " + ClientsList[client_fd]->GetNickname() +  " TOPIC :Not enough parameters\r\n";
+                        sendMessage(client_fd, errorMsg);
+                    }
                 }
             }
         }

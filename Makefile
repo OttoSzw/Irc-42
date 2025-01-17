@@ -1,24 +1,39 @@
-EXEC = Irc
+NAME = ircserv
+
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -g3
-SRCS = main.cpp Server.cpp Client.cpp Utils.cpp Channel.cpp
+
+CXXFLAGS = -Wall -Wextra -Werror -Iinc -std=c++98 -g3
+
+SRCS =  src/Channel.cpp\
+		src/Client.cpp\
+		src/main.cpp\
+		src/Server.cpp\
+		src/Utils.cpp\
+
+HEADERS = inc/Channel.hpp\
+		inc/Client.hpp\
+		inc/Server.hpp\
+		inc/Utils.hpp\
+
 OBJDIR = objs
-OBJS = $(addprefix $(OBJDIR)/, $(SRCS:.cpp=.o))
 
-all: $(EXEC)
+OBJS = $(SRCS:.cpp=.o)
 
-$(EXEC): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+all: $(NAME)
 
-$(OBJDIR)/%.o: %.cpp
+$(NAME): $(OBJS) $(HEADERS)
+	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
 	@mkdir -p $(OBJDIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	mv $(OBJS) $(OBJDIR)
+
+%.o : %.cpp $(HEADERS)
+	$(CC) $(CXXFLAGS) -c $< -o $(<:.cpp=.o)
 
 clean:
 	rm -f $(OBJS)
 
 fclean: clean
-	rm -f $(EXEC)
+	rm -f $(NAME)
 	rm -rf $(OBJDIR)
 
 re: fclean all

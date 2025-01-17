@@ -62,13 +62,14 @@ int    Client::Authentication(std::string password, int sizeTab, std::string ele
         std::cout << "\033[1;34m[D] Authenticated\033[0m" << std::endl;
         return (1);
     }
+    sendMessage(clientFd, "464 :Password incorrect\r\n");
     return (0);
 }
 
 
 void    Client::Ping(std::string token)
 {
-    std::string response = "PONG " + token;
+    std::string response = "PONG " + token + "\r\n";
     sendMessage(clientFd, response);
 }
 
@@ -114,7 +115,7 @@ void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, const std::v
         }
     }
     std::cout << "Error: No client with nickname '" << target << "' found." << std::endl;
-    std::string errorMsg = "401 " + nickname + " " + target + " :No such nick/channel\n";
+    std::string errorMsg = "401 " + target + " :No such nick/channel\r\n";
     sendMessage(clientFd, errorMsg);
 }
 
@@ -142,6 +143,13 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
 
     Channel *channelToJoin = NULL;
 
+    if (nameChannel[0] != '#' && nameChannel[0] != '&') 
+    {
+        std::string errorMsg = ":irc.example.com 476 " + nickname + " " + nameChannel + " :Invalid channel name\r\n";
+        sendMessage(clientFd, errorMsg);
+        return;
+    }
+   
     for (std::vector<Channel *>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
     {
         if ((*it)->getNameChannel() == nameChannel)
@@ -155,7 +163,63 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
     {
         channelToJoin = new Channel(nameChannel);
         ChannelList.push_back(channelToJoin);
+        channelToJoin->setOperator(clientFd, nickname);
     }
 
     channelToJoin->addUser(this);
+    sendMessage(clientFd, ":" + nickname + "!" + username + "@oszwalbe JOIN :" + nameChannel + "\r\n");
+
+    for (std::vector<Client *>::const_iterator it = channelToJoin->getClients().begin(); it != channelToJoin->getClients().end(); ++it) 
+    {
+        if (*it != this) 
+        {
+            sendMessage((*it)->clientFd, ":" + nickname + "!" + username + "@oszwalbe JOIN :" + nameChannel + "\r\n");
+        }
+    }
+
+    std::string modeMessage = ":OttoIrc42 MODE " + nameChannel + " +nt\r\n";
+    sendMessage(clientFd, modeMessage);
+    
+    std::string userList = ":";
+    for (std::vector<Client *>::const_iterator it = channelToJoin->getClients().begin(); it != channelToJoin->getClients().end(); ++it) 
+    {
+        if ((*it)->clientFd == channelToJoin->getOperator()) 
+            userList += "@" + (*it)->GetNickname() + " ";
+        else 
+            userList += (*it)->GetNickname() + " ";
+    }
+    if (!userList.empty()) 
+        userList = userList.substr(0, userList.size() - 1); // Supprimer l'espace final
+
+    std::string nameReply = ":irc.example.com 353 " + nickname + " = " + nameChannel + " " + userList + "\r\n";
+    sendMessage(clientFd, nameReply);
+    std::string endOfNames = ":irc.example.com 366 " + nickname + " " + nameChannel + " :End of /NAMES list.\r\n";
+    sendMessage(clientFd, endOfNames);
+}
+
+
+void Client::SetTopic(Channel channel, std::string topic)
+{
+    if (topic.empty())
+    {
+        if ((channel.getTopic()).empty())
+        {
+            std::string ErrorMsg = ":331 " + nickname + " " + channel.getNameChannel() + " :No topic is set\r\n";
+            sendMessage(clientFd, ErrorMsg);
+        }
+        else
+        {
+            sendMessage(clientFd, ":332 " + nickname + " " + channel.getNameChannel() + " :" + channel.getTopic() + "\r\n");
+        }
+    }
+    else
+    {
+        if (!channel.isOperator(this))
+            sendMessage(clientFd, ":482 " + nickname + " " + channel.getNameChannel() + " :You're not channel operator\r\n");
+        else
+        {
+            channel.setTopic(topic);
+            // Broadcast faut pas oublier
+        }
+    }
 }

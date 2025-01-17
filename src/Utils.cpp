@@ -36,7 +36,6 @@ void sendMessage(int client_fd, const std::string& message)
     send(client_fd, message.c_str(), message.size(), 0);
 }
 
-
 std::string mesgParsing(const std::vector<std::string> &av)
 {
     std::string message;
