@@ -145,7 +145,7 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
 
     if (nameChannel[0] != '#' && nameChannel[0] != '&') 
     {
-        std::string errorMsg = ":irc.example.com 476 " + nickname + " " + nameChannel + " :Invalid channel name\r\n";
+        std::string errorMsg = ":OttoIrc42 476 " + nickname + " " + nameChannel + " :Invalid channel name\r\n";
         sendMessage(clientFd, errorMsg);
         return;
     }
@@ -191,35 +191,60 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
     if (!userList.empty()) 
         userList = userList.substr(0, userList.size() - 1); // Supprimer l'espace final
 
-    std::string nameReply = ":irc.example.com 353 " + nickname + " = " + nameChannel + " " + userList + "\r\n";
+    std::string nameReply = ":OttoIrc42 353 " + nickname + " = " + nameChannel + " " + userList + "\r\n";
     sendMessage(clientFd, nameReply);
-    std::string endOfNames = ":irc.example.com 366 " + nickname + " " + nameChannel + " :End of /NAMES list.\r\n";
+    std::string endOfNames = ":OttoIrc42 366 " + nickname + " " + nameChannel + " :End of /NAMES list.\r\n";
     sendMessage(clientFd, endOfNames);
+
+    if (!channelToJoin->getTopic().empty()) 
+    {
+        std::string topicMessage = ":OttoIrc42 332 " + nickname + " " + nameChannel + " :" + channelToJoin->getTopic() + "\r\n";
+        sendMessage(clientFd, topicMessage);
+    }
 }
 
 
-void Client::SetTopic(Channel channel, std::string topic)
+void Client::SetTopic(std::string channel, std::vector<Channel *> ChannelList, std::string newTopic)
 {
-    if (topic.empty())
+    Channel* foundChannel = NULL;
+    for (std::vector<Channel*>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
     {
-        if ((channel.getTopic()).empty())
+        if (*it != NULL && (*it)->getNameChannel() == channel)
         {
-            std::string ErrorMsg = ":331 " + nickname + " " + channel.getNameChannel() + " :No topic is set\r\n";
-            sendMessage(clientFd, ErrorMsg);
+            foundChannel = *it;
+            break;
+        }
+    }
+    if (foundChannel == NULL)
+    {
+        std::string errorMsg = ":403 " + nickname + " " + channel + " :No such channel\r\n";
+        sendMessage(clientFd, errorMsg);
+        return;
+    }
+
+    if (newTopic.empty())
+    {
+        const std::string& currentTopic = foundChannel->getTopic();
+        if (currentTopic.empty())
+        {
+            std::string msg = ":331 " + nickname + " " + channel + " :No topic is set\r\n";
+            sendMessage(clientFd, msg);
         }
         else
         {
-            sendMessage(clientFd, ":332 " + nickname + " " + channel.getNameChannel() + " :" + channel.getTopic() + "\r\n");
+            std::string msg = ":332 " + nickname + " " + channel + " :" + currentTopic + "\r\n";
+            sendMessage(clientFd, msg);
         }
+        return ;
     }
-    else
+
+    if (foundChannel->getOperator() != clientFd)
     {
-        if (!channel.isOperator(this))
-            sendMessage(clientFd, ":482 " + nickname + " " + channel.getNameChannel() + " :You're not channel operator\r\n");
-        else
-        {
-            channel.setTopic(topic);
-            // Broadcast faut pas oublier
-        }
+        std::string errorMsg = ":482 " + GetNickname() + " " + foundChannel->getNameChannel() + " :You're not a channel operator\r\n";
+        sendMessage(clientFd, errorMsg);
+        return;
     }
+    foundChannel->setTopic(newTopic);
+    std::string topicMessage = ":" + GetNickname() + "!" + username + "@server TOPIC " + foundChannel->getNameChannel() + " :" + newTopic + "\r\n";
+    foundChannel->Broadcast(topicMessage);
 }

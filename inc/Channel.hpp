@@ -36,6 +36,7 @@ class Channel
         void                            addUser(Client *client);
         void                            removeUser(Client *client);
         int                             isOperator(Client *client);
+        void                            Broadcast(std::string message);
 };
 
 #endif

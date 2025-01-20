@@ -72,3 +72,12 @@ int             Channel::isOperator(Client *client)
         return (1);
     return (0);
 }
+
+void            Channel::Broadcast(std::string message)
+{
+    for (Client *client : ChannelClient)
+    {
+        if (client != NULL)
+            sendMessage(client->GetClientFd() , message);   
+    }
+}

@@ -192,35 +192,15 @@ void Server::handleConnection(int client_fd)
                 {
                     if (av[i].size() > 1 && !av[i][1].empty())
                     {
-                        Channel *foundChannel = NULL;
-                        for (std::vector<Channel *>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
+                        std::string newTopic;
+
+                        for (size_t j = 2; j < av[i].size(); ++j)
                         {
-                            Channel *channel = (*it);
-                            if (channel->getNameChannel() == av[i][1])
-                            {
-                                foundChannel = channel;
-                                break;
-                            }
+                            newTopic += av[i][j];
+                            if (j < av[i].size() - 1) 
+                                newTopic += " ";
                         }
-                        if (foundChannel != NULL)
-                        {
-                            std::string topicDescription = "";
-                            if (av[i].size() > 2)
-                            {
-                                for (size_t j = 2; j < av[i].size(); ++j)
-                                {
-                                    if (j > 2)
-                                        topicDescription += " ";
-                                    topicDescription += av[i][j];
-                                }
-                            }
-                            ClientsList[client_fd]->SetTopic(*foundChannel, topicDescription);
-                        }
-                        else
-                        {
-                            std::string errorMsg = ":403 " + ClientsList[client_fd]->GetNickname() + av[i][1] + " :No such channel\r\n";
-                            sendMessage(client_fd, errorMsg);
-                        }
+                        ClientsList[client_fd]->SetTopic(av[i][1], ChannelList, newTopic);
                     }
                     else
                     {
