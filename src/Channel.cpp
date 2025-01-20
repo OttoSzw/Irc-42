@@ -75,9 +75,23 @@ int             Channel::isOperator(Client *client)
 
 void            Channel::Broadcast(std::string message)
 {
-    for (Client *client : ChannelClient)
+    std::vector<Client *>::const_iterator it;
+    for (it = ChannelClient.begin(); it != ChannelClient.end(); ++it)
     {
-        if (client != NULL)
-            sendMessage(client->GetClientFd() , message);   
+        if ((*it) != NULL)
+            sendMessage((*it)->GetClientFd() , message);   
     }
+}
+
+int             Channel::isUserInChannel(Client *clientToInvite)
+{
+    std::vector<Client *>::iterator it;
+    for (it = ChannelClient.begin(); it != ChannelClient.end(); ++it)
+    {
+        if ((*it) == clientToInvite)
+        {
+            return (1);
+        }
+    }
+    return (0);
 }

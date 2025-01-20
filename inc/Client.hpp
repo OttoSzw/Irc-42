@@ -47,6 +47,7 @@ class Client
         void            Ping(std::string token);
         void            SetMode(std::string mode);
         void            JoinChannel(std::string nameChannel, std::vector<Channel *> &ChannelList);
+        void            Invite(std::string nameUser, std::string nameChannel, std::vector<Channel *> ChannelList, const std::map<int, Client *> &ClientsList);
         void            SetTopic(std::string channel, std::vector<Channel *> ChannelList, std::string newTopic);
 };
 

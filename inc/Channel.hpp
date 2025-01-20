@@ -37,6 +37,8 @@ class Channel
         void                            removeUser(Client *client);
         int                             isOperator(Client *client);
         void                            Broadcast(std::string message);
+
+        int                             isUserInChannel(Client *clientToInvite);
 };
 
 #endif

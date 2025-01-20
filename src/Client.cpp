@@ -204,7 +204,54 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
 }
 
 
-void Client::SetTopic(std::string channel, std::vector<Channel *> ChannelList, std::string newTopic)
+void            Client::Invite(std::string nameUser, std::string name, std::vector<Channel *> ChannelList, const std::map<int, Client *> &ClientsList)
+{
+    Channel* channel = NULL;
+    for (std::vector<Channel *>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
+    {
+        if ((*it)->getNameChannel() != name)
+        {
+            channel = *it;
+            break;
+        }
+    }
+    if (!channel)
+    {
+        std::string errorMsg = ":OttoIrc42 403 " + GetNickname() + " " + name + " :No such channel\r\n";
+        sendMessage(clientFd, errorMsg);
+        return;
+    }
+
+    if (!channel->isOperator(this))
+    {
+        std::string errorMsg = ":OttoIrc42 482 " + GetNickname() + " " + name + " :You're not channel operator\r\n";
+        sendMessage(clientFd, errorMsg);
+        return;
+    }
+
+    Client* clientToInvite = findClientByName(nameUser, ClientsList);
+    if (!clientToInvite)
+    {
+        std::string errorMsg = ":OttoIrc42 401 " + GetNickname() + " " + nameUser + " :No such nick\r\n";
+        sendMessage(clientFd, errorMsg);
+        return;
+    }
+
+    if (channel->isUserInChannel(clientToInvite))
+    {
+        std::string errorMsg = ":OttoIrc42 443 " + GetNickname() + " " + nameUser + " " + name + " :User already in channel\r\n";
+        sendMessage(clientFd, errorMsg);
+        return;
+    }
+
+    std::string inviteMessage = ":OttoIrc42 INVITE " + nameUser + " :" + name + "\r\n";
+    sendMessage(clientToInvite->GetClientFd(), inviteMessage);
+
+    std::string responseMessage = ":OttoIrc42 341 " + GetNickname() + " " + nameUser + " " + name + "\r\n";
+    sendMessage(clientFd, responseMessage);
+}
+
+void            Client::SetTopic(std::string channel, std::vector<Channel *> ChannelList, std::string newTopic)
 {
     Channel* foundChannel = NULL;
     for (std::vector<Channel*>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)

@@ -186,7 +186,11 @@ void Server::handleConnection(int client_fd)
                 }
                 if (av[i][0] == "INVITE")
                 {
-
+                    std::cout << "Size : " << av[i].size() << std::endl;
+                    if (av[i].size() > 1 && !av[i][1].empty() && !av[i][2].empty())
+                        ClientsList[client_fd]->Invite(av[i][1], av[i][2], ChannelList, ClientsList);
+                    else
+                        sendMessage(client_fd, "461 INVITE :Not enough parameters\r\n");
                 }
                 if (av[i][0] == "TOPIC")
                 {

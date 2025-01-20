@@ -48,3 +48,17 @@ std::string mesgParsing(const std::vector<std::string> &av)
     }
     return (message);
 }
+
+
+Client* findClientByName(std::string nameUser, const std::map<int, Client *> &ClientsList)
+{
+    std::map<int, Client *>::const_iterator it;
+    for (it = ClientsList.begin(); it != ClientsList.end(); ++it)
+    {
+        if (it->second->GetNickname() == nameUser)
+        {
+            return (it->second);
+        }
+    }
+    return (NULL);
+}
