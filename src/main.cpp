@@ -14,6 +14,7 @@ int main(int ac, char **av)
         std::string trans(av[2]);
         Server Instance(atoi(av[1]), trans);
 
+        signal(SIGQUIT, SIG_IGN);
         Instance.RunningServer();
     }
     catch(const std::exception& e)

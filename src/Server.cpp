@@ -1,5 +1,27 @@
 #include "Server.hpp"
 
+bool    g_running = true;
+
+Server* g_server = NULL;
+
+void catch_C(int sig)
+{
+    std::cout << "\nSignal " << sig << " reçu. Arrêt du serveur...😄\n";
+
+    for (std::map<int, Client*>::iterator it = g_server->getClientsList().begin(); it != g_server->getClientsList().end(); ++it)
+    {
+        delete it->second;
+        close(it->first);
+    }
+
+    for (std::vector<Channel*>::iterator it = g_server->getChannelList().begin(); it != g_server->getChannelList().end(); ++it)
+        delete *it;
+    g_server->getClientsList().clear();
+    g_server->getChannelList().clear();
+
+    g_running = false;
+}
+
 Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), password(PasswordGiven), valid(0)
 {
     socketServer = socket(AF_INET, SOCK_STREAM, 0);
@@ -20,10 +42,12 @@ Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), pass
 
     if (listen(socketServer, SOMAXCONN) < 0)
         throw std::runtime_error("Listen failed");
+    g_server = this;
 }
 
 void    Server::RunningServer()
 {
+    signal(SIGINT, catch_C);
     epollFd = epoll_create1(0);
     if (epollFd < 0)
         throw std::runtime_error("Error epoll failed Instance");
@@ -35,7 +59,7 @@ void    Server::RunningServer()
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, socketServer, &ev) < 0)
         throw std::runtime_error("Failed to add socketServer to epoll"); 
     
-    while (true)
+    while (g_running)
     {
         int newEvents = epoll_wait(epollFd, events, 10, -1);
         if (newEvents < 0)
@@ -51,7 +75,6 @@ void    Server::RunningServer()
                 handleConnection(events[i].data.fd);
         }
     }
-
     close(epollFd);
     close(socketServer);
 }
@@ -88,10 +111,10 @@ void Server::handleConnection(int client_fd)
         std::cout << "Client disconnected: FD " << client_fd << std::endl;
         for (std::vector<Channel*>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
             (*it)->removeUser(ClientsList[client_fd]);
-        close(client_fd);
         delete ClientsList[client_fd];
         ClientsList.erase(client_fd);
         epoll_ctl(epollFd, EPOLL_CTL_DEL, client_fd, 0);
+        close(client_fd);
     }
 
     for (size_t i = 0; i < av.size(); i++)
@@ -167,26 +190,38 @@ void Server::handleConnection(int client_fd)
                 }
                 if (av[i][0] == "MODE")
                 {
-                    if (av[i].size() > 2 && !av[i][2].empty())
-                    {
-                        std::string mode = av[i][2];
-                        ClientsList[client_fd]->SetMode(mode);
-                    }
+                    if (av[i].size() > 1 && !av[i][1].empty())
+                        ClientsList[client_fd]->SetMode(av,i,ChannelList);
+                    else
+                        sendMessage(client_fd, "461 MODE :Not enough parameters\r\n");
                 }
                 if (av[i][0] == "JOIN")
                 {
                     if (av[i].size() > 1 && !av[i][1].empty())
-                        ClientsList[client_fd]->JoinChannel(av[i][1], ChannelList);
+                        ClientsList[client_fd]->JoinChannel(av[i][1], ChannelList, "");
+                    if (av[i].size() > 2 && !av[i][1].empty() && !av[i][2].empty())
+                        ClientsList[client_fd]->JoinChannel(av[i][1], ChannelList, av[i][2]);
                     else
                         sendMessage(client_fd, "461 JOIN :Not enough parameters\r\n");
                 }
                 if (av[i][0] == "KICK")
                 {
-                    
+                    if (av[i].size() > 2 && !av[i][1].empty() && !av[i][2].empty())
+                    {
+                        std::string Kickmessage;
+                        for (size_t j = 3; j < av[i].size(); ++j)
+                        {
+                            Kickmessage += av[i][j];
+                            if (j < av[i].size() - 1) 
+                                Kickmessage += " ";
+                        }
+                        ClientsList[client_fd]->Kick(av[i][1], av[i][2], ClientsList, ChannelList, Kickmessage);
+                    }
+                    else
+                        sendMessage(client_fd, "461 KICK :Not enough parameters\r\n");
                 }
                 if (av[i][0] == "INVITE")
                 {
-                    std::cout << "Size : " << av[i].size() << std::endl;
                     if (av[i].size() > 1 && !av[i][1].empty() && !av[i][2].empty())
                         ClientsList[client_fd]->Invite(av[i][1], av[i][2], ChannelList, ClientsList);
                     else

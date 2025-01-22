@@ -16,6 +16,8 @@
 #include "Client.hpp"
 #include "Channel.hpp"
 #include "Utils.hpp"
+#include "signal.h"
+
 
 class Server
 {
@@ -36,6 +38,14 @@ class Server
 
         Server(int PortGiven, std::string PasswordGiven);
 
+        std::map<int, Client*>& getClientsList()
+        {
+                return (ClientsList);
+        }
+        std::vector<Channel *>& getChannelList()
+        {
+                return (ChannelList);
+        }
         void    RunningServer();
         void    newConnection();
         void    handleConnection(int client_fd);

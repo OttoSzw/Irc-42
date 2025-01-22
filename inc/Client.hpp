@@ -28,7 +28,6 @@ class Client
         bool            setNick;
         bool            setUser;
 
-        bool            isInvisible;
 
     public:
 
@@ -45,10 +44,11 @@ class Client
         int             Authentication(std::string password, int sizeTab, std::string element);
         void            PrivMsg(const std::map<int, Client *> &ClientsList, const std::vector<Channel *> &ChannelList, std::string target, std::string message);
         void            Ping(std::string token);
-        void            SetMode(std::string mode);
-        void            JoinChannel(std::string nameChannel, std::vector<Channel *> &ChannelList);
+        void            SetMode(std::vector<std::vector<std::string> > av, int i, std::vector<Channel *> ChannelList);
+        void            JoinChannel(std::string nameChannel, std::vector<Channel *> &ChannelList, std::string password);
         void            Invite(std::string nameUser, std::string nameChannel, std::vector<Channel *> ChannelList, const std::map<int, Client *> &ClientsList);
         void            SetTopic(std::string channel, std::vector<Channel *> ChannelList, std::string newTopic);
+        void            Kick(std::string channel, std::string user, const std::map<int, Client *> &ClientsList, std::vector<Channel *> ChannelList, std::string message);
 };
 
 #endif

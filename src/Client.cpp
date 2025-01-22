@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client(int client_fd) : clientFd(client_fd), setNick(false), setUser(false), isInvisible(0), flagWelcome(0)
+Client::Client(int client_fd) : clientFd(client_fd), setNick(false), setUser(false), flagWelcome(0)
 {
     nickname = "Anonymous";
     username = "Unknow";
@@ -119,22 +119,147 @@ void    Client::PrivMsg(const std::map<int, Client *> &ClientsList, const std::v
     sendMessage(clientFd, errorMsg);
 }
 
-void    Client::SetMode(std::string mode)
+void    Client::SetMode(std::vector<std::vector<std::string> > av, int i, std::vector<Channel *> ChannelList)
 {
-    if (mode == "+i")
+    Channel *channel = NULL;
+    std::string mode;
+    std::string channelName = av[i][1];
+    std::string parameter;
+    for (std::vector<Channel *>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
     {
-        isInvisible = 1;
-        std::string message = "221 " + nickname + " :+i\n";
-        sendMessage(clientFd, message);
+        if ((*it)->getNameChannel() == channelName)
+        {
+            channel = *it;
+            break;
+        }
+    }
+    if (channel == NULL)
+    {
+        sendMessage(clientFd, "403 " + channelName + " :No such channel\r\n");
+        return ;
+    }
+
+    if (av[i].size() > 2 && !av[i][2].empty())
+    {
+        mode = av[i][2];
     }
     else
     {
-        std::string errorMsg = "472 " + nickname + " :Unknown MODE flag\n";
-        sendMessage(clientFd, errorMsg);
+        mode = "";
     }
+    if (av[i].size() > 3 && !av[i][3].empty())
+    {
+        parameter = av[i][3];
+    }
+    else
+    {
+        parameter = "";
+    }
+    
+    if (!channel->isOperator(this))
+    {
+        sendMessage(clientFd, "482 " + nickname + " " + channelName + " :You're not a channel operator\r\n");
+        return ;
+    }
+
+    if (mode == "-i")
+    {
+        if (channel->getInviteOnly() == true)
+        {
+            std::cout << "\033[1;33m{ MODE } -i Active :\033[0m Channel ouvert au public !" << std::endl;
+            channel->setInvitOnly(false);
+            std::string modeMessage = "MODE " + channelName + " " + mode + "\r\n";
+            channel->Broadcast(modeMessage);
+        }
+        return ;
+    }
+    if (mode == "+i")
+    {
+        if (channel->getInviteOnly() == false)
+        {
+            std::cout << "\033[1;33m{ MODE } -i Active :\033[0m Channel sous invitation uniquement !" << std::endl;
+            channel->setInvitOnly(true);
+            std::string modeMessage = "MODE " + channelName + " " + mode + "\r\n";
+            channel->Broadcast(modeMessage);
+        }
+        return ;
+    }
+
+    if (mode == "+t")
+    {
+        if(channel->gettopicRestrict() == true)
+        {
+            channel->settopicRestrict(false);       
+            std::string modeMessage = "MODE " + channelName + " " + mode + "\r\n";
+            channel->Broadcast(modeMessage);
+        }
+        return;
+    }
+    if (mode == "-t")
+    {
+        if(channel->gettopicRestrict() == false)
+        {
+            channel->settopicRestrict(true);
+            std::string modeMessage = "MODE " + channelName + " " + mode + "\r\n";
+            channel->Broadcast(modeMessage);
+        }
+        return;
+    }
+    if (mode == "+k")
+    {
+        if (channel->getKey() != "Unknow")
+        {
+            std::string errorMsg = ":OttoIrc42 467 " + nickname + " " + channelName + " :Channel key already set\r\n";
+            sendMessage(clientFd, errorMsg);
+        }
+        else
+        {
+            channel->setKey(parameter);
+            std::string modeMessage = "MODE " + channelName + " " + mode + " " + parameter + "\r\n";
+            channel->Broadcast(modeMessage);
+        }
+        return ;
+    }
+    if (mode == "-k")
+    {
+        if (channel->getKey().empty())
+        {
+            std::string errorMsg = ":OttoIrc42 461 " + nickname + " " + channelName + " :No channel key is set\r\n";
+            sendMessage(clientFd, errorMsg);
+        }
+        else
+        {
+            channel->setKey("");
+            std::string modeMessage = "MODE " + channelName + " " + mode + "\r\n";
+            channel->Broadcast(modeMessage);
+        }
+        return ;
+    }
+    
+    if (mode == "+o")
+    {
+        if(av[i].size() == 4){
+            int newop = channel->findUser(av[i][3]);
+            if (newop != -1){
+                channel->setOperator(newop,av[i][3]);
+                std::string modeMessage = "MODE " + channelName + " " + av[i][3] + " has been promoted.\r\n";
+                channel->Broadcast(modeMessage);
+            }
+            else{
+                std::string errorMsg = ":MODE   401 user " + channelName + " " + av[i][3] +" :not found" + "\r\n";
+                sendMessage(clientFd, errorMsg);
+            }
+            return;
+        }
+    }
+    else
+    {
+        std::string errorMsg = ":OttoIrc42 472" + nickname + " " + channelName + " " + mode +" :is unknown mode char for " + channelName + "\r\n";
+        sendMessage(clientFd, errorMsg);
+    } 
 }
 
-void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &ChannelList)
+void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &ChannelList, std::string password)
 {
     if (nameChannel.empty())
     {
@@ -166,6 +291,16 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
         channelToJoin->setOperator(clientFd, nickname);
     }
 
+    if (channelToJoin->getInviteOnly() == true)
+    {
+        if (!channelToJoin->CheckKey(password))
+        {
+            std::string errorMsg = ":OttoIrc42 475 " + nickname + " " + nameChannel + " :Cannot join channel (invite-only or wrong password)\r\n";
+            sendMessage(clientFd, errorMsg);
+            return;
+        }
+    }
+
     channelToJoin->addUser(this);
     sendMessage(clientFd, ":" + nickname + "!" + username + "@oszwalbe JOIN :" + nameChannel + "\r\n");
 
@@ -176,9 +311,6 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
             sendMessage((*it)->clientFd, ":" + nickname + "!" + username + "@oszwalbe JOIN :" + nameChannel + "\r\n");
         }
     }
-
-    std::string modeMessage = ":OttoIrc42 MODE " + nameChannel + " +nt\r\n";
-    sendMessage(clientFd, modeMessage);
     
     std::string userList = ":";
     for (std::vector<Client *>::const_iterator it = channelToJoin->getClients().begin(); it != channelToJoin->getClients().end(); ++it) 
@@ -189,7 +321,7 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
             userList += (*it)->GetNickname() + " ";
     }
     if (!userList.empty()) 
-        userList = userList.substr(0, userList.size() - 1); // Supprimer l'espace final
+        userList = userList.substr(0, userList.size() - 1);
 
     std::string nameReply = ":OttoIrc42 353 " + nickname + " = " + nameChannel + " " + userList + "\r\n";
     sendMessage(clientFd, nameReply);
@@ -203,6 +335,49 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
     }
 }
 
+void            Client::Kick(std::string channelname, std::string user, const std::map<int, Client *> &ClientsList, std::vector<Channel *> ChannelList, std::string message)
+{
+    Channel *channel = NULL;
+    for (std::vector<Channel *>::iterator it = ChannelList.begin(); it != ChannelList.end(); ++it)
+    {
+        if ((*it)->getNameChannel() == channelname)
+        {
+            channel = *it;
+            break;
+        }
+    }
+
+    if (channel == NULL)
+    {
+        sendMessage(clientFd, "403 " + channelname + " :No such channel\r\n");
+        return;
+    }
+    if (!channel->isOperator(this))
+    {
+        sendMessage(clientFd, "482 " + nickname + " " + channelname + " :You're not a channel operator\r\n");
+        return ;
+    }
+
+    Client* clientToKick = findClientByName(user, ClientsList);
+    if (clientToKick == NULL)
+    {
+        sendMessage(clientFd, "401 " + user + " :No such nick/channel\r\n");
+        return;
+    }
+    if (!channel->isUserInChannel(clientToKick))
+    {
+        sendMessage(clientFd, "442 " + user + " " + channelname + " :You're not on that channel\r\n");
+        return;
+    }
+
+    channel->removeUser(clientToKick);
+    
+    std::string kickMessage = message.empty() ? "You have been kicked" : message;
+    std::string notification = ":" + this->GetNickname() + " KICK " + channelname + " " + user + " :" + kickMessage + "\r\n";
+
+    channel->Broadcast(notification);
+    sendMessage(clientToKick->GetClientFd(), notification);
+}
 
 void            Client::Invite(std::string nameUser, std::string name, std::vector<Channel *> ChannelList, const std::map<int, Client *> &ClientsList)
 {
@@ -285,13 +460,13 @@ void            Client::SetTopic(std::string channel, std::vector<Channel *> Cha
         return ;
     }
 
-    if (foundChannel->getOperator() != clientFd)
+    if (foundChannel->getOperator() != clientFd && foundChannel->gettopicRestrict() == false)
     {
-        std::string errorMsg = ":482 " + GetNickname() + " " + foundChannel->getNameChannel() + " :You're not a channel operator\r\n";
+        std::string errorMsg = "482 " + nickname + " " + channel + " :You're not a channel operator\r\n";
         sendMessage(clientFd, errorMsg);
         return;
     }
     foundChannel->setTopic(newTopic);
-    std::string topicMessage = ":" + GetNickname() + "!" + username + "@server TOPIC " + foundChannel->getNameChannel() + " :" + newTopic + "\r\n";
+    std::string topicMessage = ":" + nickname + "!" + username + "@server TOPIC " + channel + " :" + newTopic + "\r\n";
     foundChannel->Broadcast(topicMessage);
 }

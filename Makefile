@@ -17,20 +17,19 @@ HEADERS = inc/Channel.hpp\
 
 OBJDIR = objs
 
-OBJS = $(SRCS:.cpp=.o)
+OBJS = $(SRCS:src/%.cpp=$(OBJDIR)/%.o)
 
 all: $(NAME)
 
-$(NAME): $(OBJS) $(HEADERS)
+$(NAME): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(OBJS) -o $(NAME)
-	@mkdir -p $(OBJDIR)
-	mv $(OBJS) $(OBJDIR)
 
-%.o : %.cpp $(HEADERS)
-	$(CC) $(CXXFLAGS) -c $< -o $(<:.cpp=.o)
+$(OBJDIR)/%.o: src/%.cpp $(HEADERS)
+	@mkdir -p $(OBJDIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS)
+	rm -rf $(objs)
 
 fclean: clean
 	rm -f $(NAME)
