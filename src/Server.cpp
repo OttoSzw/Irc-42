@@ -197,7 +197,7 @@ void Server::handleConnection(int client_fd)
                 }
                 if (av[i][0] == "JOIN")
                 {
-                    if (av[i].size() > 1 && !av[i][1].empty())
+                    if (av[i].size() == 2 && !av[i][1].empty())
                         ClientsList[client_fd]->JoinChannel(av[i][1], ChannelList, "");
                     if (av[i].size() > 2 && !av[i][1].empty() && !av[i][2].empty())
                         ClientsList[client_fd]->JoinChannel(av[i][1], ChannelList, av[i][2]);
@@ -247,6 +247,18 @@ void Server::handleConnection(int client_fd)
                         sendMessage(client_fd, errorMsg);
                     }
                 }
+                // if (av[i][0] == "DCC")
+                // {
+                //     if (av[i].size() > 2 && !av[i][2].empty() && !av[i][3].empty())
+                //     {
+                        
+                //     }
+                //     else
+                //     {
+                //         std::string errorMsg = ":461 " + ClientsList[client_fd]->GetNickname() +  " DCC :Not enough parameters\r\n";
+                //         sendMessage(client_fd, errorMsg);
+                //     }
+                // }
             }
         }
     }

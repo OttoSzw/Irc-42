@@ -16,9 +16,9 @@ class Channel
 
         int                             _operator;
         bool                            _inviteOnly;
-        bool                            _topicRestrict; // -t
-        int                             _userLimit; //-l metre a -1 si il n'y as pas de limite
-        std::string                     _key;  // -k
+        bool                            _topicRestrict;
+        int                             _userLimit;
+        std::string                     _key;
         std::string                     nameChannel;
         std::vector<Client *>           ChannelClient;
         std::vector<Client *>           _listInvite;
@@ -47,7 +47,10 @@ class Channel
         void                            setKey(std::string newString);
 
         void                            addUser(Client *client);
+        void                            addUserInvite(Client *client);
         void                            removeUser(Client *client);
+        void                            removeUserInvite(Client *client);
+        int                            InviteList(Client *client);
         int                             isOperator(Client *client);
         void                            Broadcast(std::string message);
         int                             CheckKey(std::string newString);

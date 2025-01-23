@@ -9,11 +9,13 @@ SRCS =  src/Channel.cpp\
 		src/main.cpp\
 		src/Server.cpp\
 		src/Utils.cpp\
+		# src/Bot.cpp\
 
 HEADERS = inc/Channel.hpp\
 		inc/Client.hpp\
 		inc/Server.hpp\
 		inc/Utils.hpp\
+		# inc/Bot.hpp\
 
 OBJDIR = objs
 

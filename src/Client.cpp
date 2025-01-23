@@ -229,7 +229,7 @@ void    Client::SetMode(std::vector<std::vector<std::string> > av, int i, std::v
         }
         else
         {
-            channel->setKey("");
+            channel->setKey("Unknow");
             std::string modeMessage = "MODE " + channelName + " " + mode + "\r\n";
             channel->Broadcast(modeMessage);
         }
@@ -251,6 +251,29 @@ void    Client::SetMode(std::vector<std::vector<std::string> > av, int i, std::v
             }
             return;
         }
+    }
+    else if(mode == "-l")
+    {
+        channel->setUserLimit(-1);
+        std::string modeMessage = "MODE " + channelName + " " + mode + "\r\n";
+        channel->Broadcast(modeMessage);
+        return;
+    }
+    else if(mode == "+l")
+    {   
+        if(av[i].size() == 4){
+        int limit = atoi(av[i][3].c_str());
+        if(limit > 0){
+            channel->setUserLimit(limit);
+            std::string modeMessage = "MODE " + channelName + " " + mode +" ("+ av[i][3].c_str() +")"+ "\r\n";
+            channel->Broadcast(modeMessage);
+            return;
+            }
+        }
+        std::string errorMsg = "MODE " + channelName + " " + mode + " invalid parameter.\r\n";
+        sendMessage(clientFd, errorMsg);
+        return;
+
     }
     else
     {
@@ -293,15 +316,33 @@ void Client::JoinChannel(std::string nameChannel, std::vector<Channel *> &Channe
 
     if (channelToJoin->getInviteOnly() == true)
     {
-        if (!channelToJoin->CheckKey(password))
+        if (channelToJoin->InviteList(this) != 1)
         {
-            std::string errorMsg = ":OttoIrc42 475 " + nickname + " " + nameChannel + " :Cannot join channel (invite-only or wrong password)\r\n";
+            std::cout << password << std::endl;
+            std::cout << channelToJoin->getKey() << std::endl;
+            if (!channelToJoin->CheckKey(password))
+            {
+                std::string errorMsg = ":OttoIrc42 475 " + nickname + " " + nameChannel + " :Cannot join channel (invite-only or wrong password)\r\n";
+                sendMessage(clientFd, errorMsg);
+                return;
+            }
+        }
+    }
+
+
+    if (channelToJoin->getUserLimit() != -1)
+    {
+        if( int(channelToJoin->getClients().size()) >= channelToJoin->getUserLimit())
+        {
+            std::string errorMsg = ":OttoIrc42 471 " + nickname + " " + nameChannel + " :Cannot join channel (invite-only or wrong password)\r\n";
             sendMessage(clientFd, errorMsg);
             return;
         }
     }
 
     channelToJoin->addUser(this);
+    if (channelToJoin->InviteList(this) != 0)
+        channelToJoin->removeUserInvite(this);
     sendMessage(clientFd, ":" + nickname + "!" + username + "@oszwalbe JOIN :" + nameChannel + "\r\n");
 
     for (std::vector<Client *>::const_iterator it = channelToJoin->getClients().begin(); it != channelToJoin->getClients().end(); ++it) 
@@ -419,6 +460,7 @@ void            Client::Invite(std::string nameUser, std::string name, std::vect
         return;
     }
 
+    channel->addUserInvite(clientToInvite);
     std::string inviteMessage = ":OttoIrc42 INVITE " + nameUser + " :" + name + "\r\n";
     sendMessage(clientToInvite->GetClientFd(), inviteMessage);
 
