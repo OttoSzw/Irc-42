@@ -22,6 +22,27 @@ void catch_C(int sig)
     g_running = false;
 }
 
+void Server::botTask()
+{
+    sendPeriodicMessage();
+}
+
+void Server::sendPeriodicMessage()
+{
+    while (g_running)
+    {
+        sleep(30);
+        std::string message = "\033[1;32m[ BOT ]\033[0m : Hello, Server!\n La meteo est pluvieuse a Paris !\n, Nous sommes actuellement le 24/01/2025";
+        sendMessageToServer(message);
+    }
+}
+
+void Server::sendMessageToServer(const std::string& message)
+{
+    std::cout << message << std::endl;
+    std::cout << std::endl;
+}
+
 Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), password(PasswordGiven), valid(0)
 {
     socketServer = socket(AF_INET, SOCK_STREAM, 0);
@@ -47,6 +68,7 @@ Server::Server(int PortGiven, std::string PasswordGiven) : port(PortGiven), pass
 
 void    Server::RunningServer()
 {
+    signal(SIGQUIT, SIG_IGN);
     signal(SIGINT, catch_C);
     epollFd = epoll_create1(0);
     if (epollFd < 0)
@@ -59,6 +81,18 @@ void    Server::RunningServer()
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, socketServer, &ev) < 0)
         throw std::runtime_error("Failed to add socketServer to epoll"); 
     
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        botTask();
+        exit(0);
+    }
+    else if (pid < 0)
+    {
+        std::cerr << "Error: fork failed" << std::endl;
+        exit(1);
+    }
+
     while (g_running)
     {
         int newEvents = epoll_wait(epollFd, events, 10, -1);
@@ -103,8 +137,10 @@ void Server::handleConnection(int client_fd)
 {
     std::string message = ClientsList[client_fd]->recvMessage();
     std::vector<std::vector<std::string> > av = CommandSplitParam(message);
-
     std::cout << "\033[1;93m(" << ClientsList[client_fd]->GetNickname() << ")\033[0m" << "\033[1;36m : " << message << "\033[0m" << std::endl;
+    if (message.empty())
+        return;
+
 
     if (av.size() == 0 || av[0].empty())
     {
@@ -115,6 +151,7 @@ void Server::handleConnection(int client_fd)
         ClientsList.erase(client_fd);
         epoll_ctl(epollFd, EPOLL_CTL_DEL, client_fd, 0);
         close(client_fd);
+        return ;
     }
 
     for (size_t i = 0; i < av.size(); i++)
@@ -247,18 +284,28 @@ void Server::handleConnection(int client_fd)
                         sendMessage(client_fd, errorMsg);
                     }
                 }
-                // if (av[i][0] == "DCC")
-                // {
-                //     if (av[i].size() > 2 && !av[i][2].empty() && !av[i][3].empty())
-                //     {
-                        
-                //     }
-                //     else
-                //     {
-                //         std::string errorMsg = ":461 " + ClientsList[client_fd]->GetNickname() +  " DCC :Not enough parameters\r\n";
-                //         sendMessage(client_fd, errorMsg);
-                //     }
-                // }
+                if (av[i][0] == "DCC")
+                {
+                    if (av[i].size() > 3 && av[i][1] == "SEND" && !av[i][2].empty() && !av[i][3].empty())
+                    {
+                        std::string targetNickname = av[i][2];
+                        std::string filename = av[i][3];    
+
+                        ClientsList[client_fd]->FileTransfer(targetNickname, filename, ClientsList);
+                    }
+                    else if (av[i].size() > 3 && av[i][1] == "ACCEPT" && !av[i][2].empty() && !av[i][3].empty())
+                    {
+                        std::string senderNickname = av[i][2];
+                        std::string filename = av[i][3];
+
+                        ClientsList[client_fd]->FileReceive(senderNickname, filename, ClientsList);
+                    }
+                    else
+                    {
+                        std::string errorMsg = ":461 " + ClientsList[client_fd]->GetNickname() +  " DCC :Not enough parameters\r\n";
+                        sendMessage(client_fd, errorMsg);
+                    }
+                }
             }
         }
     }

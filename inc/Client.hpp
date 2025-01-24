@@ -9,6 +9,8 @@
 
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#include <arpa/inet.h>
+#include <fstream>
 
 #include <map>
 #include <netinet/in.h>
@@ -49,6 +51,9 @@ class Client
         void            Invite(std::string nameUser, std::string nameChannel, std::vector<Channel *> ChannelList, const std::map<int, Client *> &ClientsList);
         void            SetTopic(std::string channel, std::vector<Channel *> ChannelList, std::string newTopic);
         void            Kick(std::string channel, std::string user, const std::map<int, Client *> &ClientsList, std::vector<Channel *> ChannelList, std::string message);
+        std::string     GetIP();
+        void            FileTransfer(std::string targetNickname, std::string filename, std::map<int, Client *> ClientList);
+        void            FileReceive(std::string targetNickname, std::string filename, std::map<int, Client *> ClientList);
 };
 
 #endif

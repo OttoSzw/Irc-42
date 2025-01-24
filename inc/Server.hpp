@@ -23,7 +23,8 @@ class Server
 {
 
     private:
-
+    
+        void botTask();
         int                         port;
         std::string                 password;
 
@@ -49,6 +50,8 @@ class Server
         void    RunningServer();
         void    newConnection();
         void    handleConnection(int client_fd);
+        void sendPeriodicMessage();
+        void sendMessageToServer(const std::string& message);
 };
 
 #endif

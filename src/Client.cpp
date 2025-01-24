@@ -43,13 +43,23 @@ void    Client::SetUsername(std::string firstname, std::string lastname)
 
 std::string Client::recvMessage()
 {
+    std::string message;
     char buffer[1024] = {0};
-    ssize_t bytes_read = read(clientFd, buffer, sizeof(buffer) - 1);
 
-    if (bytes_read <= 0)
-        return ("");
+    ssize_t bytes_read;
+    while (true)
+    {
+        bytes_read = read(clientFd, buffer, sizeof(buffer) - 1);
 
-    std::string message(buffer);
+        if (bytes_read <= 0)
+            break;
+
+        buffer[bytes_read] = '\0';
+        message += buffer;
+
+        if (message.find('\n') != std::string::npos)
+            break;
+    }
     return (message);
 }
 
@@ -140,21 +150,13 @@ void    Client::SetMode(std::vector<std::vector<std::string> > av, int i, std::v
     }
 
     if (av[i].size() > 2 && !av[i][2].empty())
-    {
         mode = av[i][2];
-    }
     else
-    {
         mode = "";
-    }
     if (av[i].size() > 3 && !av[i][3].empty())
-    {
         parameter = av[i][3];
-    }
     else
-    {
         parameter = "";
-    }
     
     if (!channel->isOperator(this))
     {
@@ -511,4 +513,214 @@ void            Client::SetTopic(std::string channel, std::vector<Channel *> Cha
     foundChannel->setTopic(newTopic);
     std::string topicMessage = ":" + nickname + "!" + username + "@server TOPIC " + channel + " :" + newTopic + "\r\n";
     foundChannel->Broadcast(topicMessage);
+}
+
+
+std::string     Client::GetIP()
+{
+        struct sockaddr_in addr;
+        socklen_t addr_len = sizeof(addr);
+        
+        // Retrieve the peer address (client's IP) associated with the socket
+        if (getpeername(clientFd, (struct sockaddr*)&addr, &addr_len) == -1) {
+            std::cerr << "Error getting client IP address" << std::endl;
+            return "";
+        }
+        
+        // Convert the IP address to a string format
+        char ip_str[INET_ADDRSTRLEN];
+        if (inet_ntop(AF_INET, &addr.sin_addr, ip_str, sizeof(ip_str)) == NULL) {
+            std::cerr << "Error converting IP address" << std::endl;
+            return "";
+        }
+
+        return std::string(ip_str);
+}
+
+
+void            Client::FileTransfer(std::string targetNickname, std::string filename, std::map<int, Client *> ClientList)
+{
+    Client *targetClient = NULL;
+    for (std::map<int, Client *>::iterator it = ClientList.begin(); it != ClientList.end(); ++it)
+    {
+        if (it->second->GetNickname() == targetNickname)
+        {
+            targetClient = it->second;
+            break;
+        }
+    }
+
+    if (targetClient)
+    {
+        std::string senderIP = GetIP();
+        int port = 5000 + clientFd;
+        
+        // Envoyer l'invitation DCC au destinataire
+        std::ostringstream dccMessage;
+        dccMessage << "DCC SEND " << filename << " " << senderIP << " " << port << " " << getFileSize(filename) << "\r\n";
+        sendMessage(targetClient->GetClientFd(), dccMessage.str());
+
+        int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (server_fd < 0)
+        {
+            std::cerr << "Erreur : impossible de créer le socket.\n";
+            return;
+        }
+
+        struct sockaddr_in server_addr;
+        memset(&server_addr, 0, sizeof(server_addr));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_addr.s_addr = INADDR_ANY;
+        server_addr.sin_port = htons(port);
+
+        if (bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
+        {
+            std::cerr << "Erreur : impossible de lier le socket au port " << port << ".\n";
+            close(server_fd);
+            return;
+        }
+
+        if (listen(server_fd, 1) < 0)
+        {
+            std::cerr << "Erreur : écoute sur le port échouée.\n";
+            close(server_fd);
+            return;
+        }
+
+        std::cout << "Serveur DCC actif sur le port " << port << ", en attente de connexion...\n";
+
+        struct sockaddr_in client_addr;
+        socklen_t client_len = sizeof(client_addr);
+        int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
+        if (client_fd < 0)
+        {
+            std::cerr << "Erreur : connexion DCC échouée.\n";
+            close(server_fd);
+            return;
+        }
+
+        std::cout << "Connexion DCC acceptée, envoi du fichier : " << filename << "\n";
+
+        // Lecture du fichier et envoi au client
+        std::ifstream file(filename.c_str(), std::ios::binary);
+        if (!file.is_open())
+        {
+            std::cerr << "Erreur : impossible d'ouvrir le fichier.\n";
+            close(client_fd);
+            close(server_fd);
+            return;
+        }
+
+        char buffer[1024];
+        while (file.read(buffer, sizeof(buffer)))
+        {
+            send(client_fd, buffer, file.gcount(), 0);
+        }
+        // Envoyer les derniers octets, s'il en reste
+        if (file.gcount() > 0)
+        {
+            send(client_fd, buffer, file.gcount(), 0);
+        }
+
+        std::cout << "Fichier envoyé avec succès.\n";
+
+        // Nettoyage
+        file.close();
+        close(client_fd);
+        close(server_fd);
+    }
+    else
+    {
+        std::string errorMsg = ":401 " + nickname + " " + targetNickname + " :No such nick/channel\r\n";
+        sendMessage(clientFd, errorMsg);
+    }
+    
+}
+
+void            Client::FileReceive(std::string senderNickname, std::string filename, std::map<int, Client *> ClientsList)
+{
+    Client *senderClient = NULL;
+    for (std::map<int, Client *>::iterator it = ClientsList.begin(); it != ClientsList.end(); ++it)
+    {
+        if (it->second->GetNickname() == senderNickname)
+        {
+            senderClient = it->second;
+            break;
+        }
+    }
+
+
+    if (senderClient)
+    {
+        std::string message = "DCC ACCEPT from " + senderNickname + " for file " + filename;
+        sendMessage(clientFd, message);
+
+        // Récupérer l'IP et port de l'expéditeur
+        int port = 5000 + clientFd;
+        std::string senderIP = senderClient->GetIP();
+        int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd < 0)
+        {
+            std::cerr << "Erreur : impossible de créer le socket.\n";
+            return;
+        }
+
+        struct sockaddr_in server_addr;
+        memset(&server_addr, 0, sizeof(server_addr));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(port);
+
+        // Convertir l'IP en format binaire
+        if (inet_pton(AF_INET, senderIP.c_str(), &server_addr.sin_addr) <= 0)
+        {
+            std::cerr << "Erreur : adresse IP invalide.\n";
+            close(sockfd);
+            return;
+        }
+
+        // Connexion au serveur DCC
+        if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
+        {
+            std::cerr << "Erreur : impossible de se connecter au serveur DCC.\n";
+            close(sockfd);
+            return;
+        }
+
+        std::cout << "Connexion DCC établie, récupération du fichier...\n";
+
+        // Création ou ouverture du fichier de destination
+        std::ofstream outFile(filename.c_str(), std::ios::binary);
+        if (!outFile.is_open())
+        {
+            std::cerr << "Erreur : impossible d'ouvrir le fichier de destination.\n";
+            close(sockfd);
+            return;
+        }
+
+        // Réception du fichier
+        char buffer[1024];
+        int bytesReceived;
+        while ((bytesReceived = recv(sockfd, buffer, sizeof(buffer), 0)) > 0)
+        {
+            outFile.write(buffer, bytesReceived);
+        }
+
+        if (bytesReceived < 0)
+        {
+            std::cerr << "Erreur : échec de la réception du fichier.\n";
+        }
+        else
+        {
+            std::cout << "Fichier " << filename << " reçu avec succès.\n";
+        }
+
+        // Fermeture des fichiers et sockets
+        outFile.close();
+        close(sockfd);
+    }
+    else
+    {         
+        std::string errorMsg = ":401 " + ClientsList[clientFd]->GetNickname() + " " + senderNickname + " :No such nick/channel\r\n";
+        sendMessage(clientFd, errorMsg);
+    }
 }

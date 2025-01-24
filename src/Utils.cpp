@@ -27,7 +27,6 @@ std::vector<std::vector<std::string> > CommandSplitParam(const std::string &str)
 
         result.push_back(tokens);
     }
-
     return (result);
 }
 
@@ -61,4 +60,18 @@ Client* findClientByName(std::string nameUser, const std::map<int, Client *> &Cl
         }
     }
     return (NULL);
+}
+
+#include <fstream>
+
+size_t getFileSize(const std::string& filename)
+{
+    std::ifstream file(filename.c_str(), std::ios::binary | std::ios::ate);
+    if (file.is_open())
+    {
+        size_t size = file.tellg();
+        file.close();
+        return size;
+    }
+    return 0;
 }
